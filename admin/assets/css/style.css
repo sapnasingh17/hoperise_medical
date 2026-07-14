@@ -1,0 +1,9 @@
+.anyClass {
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+/* Ensure Bootstrap 5 dropdown menus show correctly */
+.dropdown-menu.show {
+    display: block !important;
+}

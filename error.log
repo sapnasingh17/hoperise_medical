@@ -1,0 +1,71 @@
+[07-Jul-2026 18:32:20 Europe/Berlin] PHP Warning:  Undefined array key "patient_lname" in C:\xampp\htdocs\hoperise_medical\my_appointment.php on line 107
+[07-Jul-2026 18:34:36 Europe/Berlin] PHP Warning:  Undefined array key "patient_lname" in C:\xampp\htdocs\hoperise_medical\my_appointment.php on line 107
+[07-Jul-2026 18:34:53 Europe/Berlin] PHP Warning:  Constant DB_HOST already defined in C:\xampp\htdocs\hoperise_medical\paypal_config.php on line 16
+[07-Jul-2026 18:34:53 Europe/Berlin] PHP Warning:  Constant DB_NAME already defined in C:\xampp\htdocs\hoperise_medical\paypal_config.php on line 19
+[07-Jul-2026 18:37:41 Europe/Berlin] PHP Warning:  Undefined array key "patient_lname" in C:\xampp\htdocs\hoperise_medical\my_appointment.php on line 107
+[07-Jul-2026 18:38:10 Europe/Berlin] PHP Warning:  Undefined array key "patient_lname" in C:\xampp\htdocs\hoperise_medical\my_appointment.php on line 107
+[07-Jul-2026 18:38:17 Europe/Berlin] PHP Warning:  Undefined array key "patient_lname" in C:\xampp\htdocs\hoperise_medical\my_appointment.php on line 107
+[07-Jul-2026 18:38:47 Europe/Berlin] PHP Warning:  Undefined array key "patient_lname" in C:\xampp\htdocs\hoperise_medical\my_appointment.php on line 107
+[07-Jul-2026 18:38:55 Europe/Berlin] PHP Warning:  Undefined array key "patient_lname" in C:\xampp\htdocs\hoperise_medical\my_appointment.php on line 107
+[07-Jul-2026 18:40:33 Europe/Berlin] PHP Warning:  mail(): Failed to connect to mailserver at &quot;localhost&quot; port 25, verify your &quot;SMTP&quot; and &quot;smtp_port&quot; setting in php.ini or use ini_set() in C:\xampp\htdocs\hoperise_medical\admin\edit_appoinment.php on line 431
+[07-Jul-2026 18:40:35 Europe/Berlin] PHP Warning:  mail(): Failed to connect to mailserver at &quot;localhost&quot; port 25, verify your &quot;SMTP&quot; and &quot;smtp_port&quot; setting in php.ini or use ini_set() in C:\xampp\htdocs\hoperise_medical\admin\edit_appoinment.php on line 431
+[2026-07-09 10:54:13] Error [2]: Cannot modify header information - headers already sent by (output started at /home/inextrix/.gemini/antigravity/brain/8075a3c8-6d82-4612-bed0-d49d91d777c2/scratch/integration_test.php:5) in /var/www/html/pratice/hoperise_medical/api_get_slots.php on line 2
+[2026-07-09 10:54:13] Error [2]: Cannot modify header information - headers already sent by (output started at /home/inextrix/.gemini/antigravity/brain/8075a3c8-6d82-4612-bed0-d49d91d777c2/scratch/integration_test.php:5) in /var/www/html/pratice/hoperise_medical/api_get_timeline.php on line 2
+[2026-07-09 11:20:26] Exception: Out of range value for column 'hs_phone' at row 1 in /var/www/html/pratice/hoperise_medical/contact.php on line 20
+Stack trace:
+#0 /var/www/html/pratice/hoperise_medical/contact.php(20): mysqli_stmt_execute()
+#1 {main}
+[2026-07-09 11:20:38] Exception: Out of range value for column 'hs_phone' at row 1 in /var/www/html/pratice/hoperise_medical/contact.php on line 20
+Stack trace:
+#0 /var/www/html/pratice/hoperise_medical/contact.php(20): mysqli_stmt_execute()
+#1 {main}
+[2026-07-09 11:23:58] Exception: Expression #1 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'hoperise.hs_appointment.appointment_date' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by in /var/www/html/pratice/hoperise_medical/my_appointment.php on line 196
+Stack trace:
+#0 /var/www/html/pratice/hoperise_medical/my_appointment.php(196): mysqli_prepare()
+#1 {main}
+[2026-07-09 15:45:23] Error [2]: Undefined array key "role_id" in /var/www/html/pratice/hoperise_medical/admin/common/sidebar.php on line 2
+[2026-07-09 15:45:23] Error [2]: Trying to access array offset on value of type null in /var/www/html/pratice/hoperise_medical/admin/common/sidebar.php on line 5
+[2026-07-09 15:46:34] Error [2]: Undefined array key "role_id" in /var/www/html/pratice/hoperise_medical/admin/common/sidebar.php on line 2
+[2026-07-09 15:46:34] Error [2]: Trying to access array offset on value of type null in /var/www/html/pratice/hoperise_medical/admin/common/sidebar.php on line 5
+[2026-07-09 15:51:41] Error [2]: Undefined array key "role_id" in /var/www/html/pratice/hoperise_medical/admin/common/sidebar.php on line 2
+[2026-07-09 15:51:41] Error [2]: Trying to access array offset on value of type null in /var/www/html/pratice/hoperise_medical/admin/common/sidebar.php on line 5
+[2026-07-09 15:58:31] Error [2]: Constant SMTP_DEBUG_MODE already defined in /home/inextrix/.gemini/antigravity/brain/aff29467-c055-43ca-ae21-a1988da4ed24/scratch/test_email.php on line 17
+[2026-07-09 15:58:31] Error [2]: Constant SMTP_DEBUG_DISPLAY already defined in /home/inextrix/.gemini/antigravity/brain/aff29467-c055-43ca-ae21-a1988da4ed24/scratch/test_email.php on line 18
+[2026-07-10 10:11:07] Exception: Data truncated for column 'patient_dob' at row 1 in /var/www/html/pratice/hoperise_medical/patient_reg.php on line 99
+Stack trace:
+#0 /var/www/html/pratice/hoperise_medical/patient_reg.php(99): mysqli_stmt_execute()
+#1 {main}
+[2026-07-10 13:15:41] Exception: Field 'admin_username' doesn't have a default value in /home/inextrix/.gemini/antigravity/brain/05eba6a5-6fe8-45a7-845e-18bcf589d453/scratch/seed_db.php on line 42
+Stack trace:
+#0 /home/inextrix/.gemini/antigravity/brain/05eba6a5-6fe8-45a7-845e-18bcf589d453/scratch/seed_db.php(42): mysqli_query()
+#1 {main}
+[2026-07-10 13:39:38] PATIENT LOGIN ATTEMPT - Email: 'jiya.singh@gmail.com', Entered Password: '$2y$10$nA2tLHyaQKINjWGopQe/j.WxXD/b4461/KuxP.Jk10OjuWkSfBgHS', Stored Hash: '$2y$10$nA2tLHyaQKINjWGopQe/j.WxXD/b4461/KuxP.Jk10OjuWkSfBgHS'
+[2026-07-10 13:42:22] PATIENT LOGIN ATTEMPT - Email: 'jiya.singh@gmail.com', Entered Password: 'Inextrix@123', Stored Hash: '$2y$10$nA2tLHyaQKINjWGopQe/j.WxXD/b4461/KuxP.Jk10OjuWkSfBgHS'
+[2026-07-10 13:51:06] PATIENT LOGIN ATTEMPT - Email: 'jiya.singh@gmail.com', Entered Password: 'Inextrix@123', Stored Hash: '$2y$10$nA2tLHyaQKINjWGopQe/j.WxXD/b4461/KuxP.Jk10OjuWkSfBgHS'
+[2026-07-10 13:51:16] PATIENT LOGIN ATTEMPT - Email: 'jiya.singh@gmail.com', Entered Password: 'Inextrix@123', Stored Hash: '$2y$10$nA2tLHyaQKINjWGopQe/j.WxXD/b4461/KuxP.Jk10OjuWkSfBgHS'
+[2026-07-10 13:56:42] PATIENT LOGIN ATTEMPT - Email: 'jiya.singh@gmail.com', Entered Password: 'Inextrix@123', Stored Hash: '$2y$10$nA2tLHyaQKINjWGopQe/j.WxXD/b4461/KuxP.Jk10OjuWkSfBgHS'
+[2026-07-10 14:12:49] PATIENT LOGIN ATTEMPT - Email: 'jiya.singh@gmail.com', Entered Password: 'Inextrix@123', Stored Hash: '$2y$10$nA2tLHyaQKINjWGopQe/j.WxXD/b4461/KuxP.Jk10OjuWkSfBgHS'
+[2026-07-10 14:13:01] PATIENT LOGIN ATTEMPT - Email: 'jiya.singh@gmail.com', Entered Password: 'Inextrix@123', Stored Hash: '$2y$10$nA2tLHyaQKINjWGopQe/j.WxXD/b4461/KuxP.Jk10OjuWkSfBgHS'
+[2026-07-10 14:14:40] PATIENT LOGIN ATTEMPT - Email: 'jiya.singh@gmail.com', Entered Password: 'Inextrix@123', Stored Hash: '$2y$10$nA2tLHyaQKINjWGopQe/j.WxXD/b4461/KuxP.Jk10OjuWkSfBgHS'
+[2026-07-10 14:20:57] PATIENT LOGIN ATTEMPT - Email: 'jiya.singh@gmail.com', Entered Password: 'Inextrix@123', Stored Hash: '$2y$10$nA2tLHyaQKINjWGopQe/j.WxXD/b4461/KuxP.Jk10OjuWkSfBgHS'
+[2026-07-10 16:04:44] PATIENT LOGIN ATTEMPT - Email: 'jiya.singh@gmail.com', Entered Password: 'Inextrix@123', Stored Hash: '$2y$10$nA2tLHyaQKINjWGopQe/j.WxXD/b4461/KuxP.Jk10OjuWkSfBgHS'
+[2026-07-10 16:43:58] PATIENT LOGIN ATTEMPT - Email: 'testpatient123@example.com', Entered Password: 'P@ssword123!', Stored Hash: '$2y$10$dH54mO3wTsHtq4bFxC31t.nXPk4osvwzwzNlMUd91tndt5dKUlZPS'
+[2026-07-10 17:33:25] PATIENT LOGIN FAILED (NOT REGISTERED) - Email: 'sskn057@gmail.com'
+[2026-07-10 17:34:02] PATIENT LOGIN ATTEMPT - Email: 'jiya.singh@gmail.com', Entered Password: 'Sapna@117', Stored Hash: '$2y$10$nA2tLHyaQKINjWGopQe/j.WxXD/b4461/KuxP.Jk10OjuWkSfBgHS'
+[2026-07-10 17:35:03] PATIENT LOGIN ATTEMPT - Email: 'sskn057@gmail.com', Entered Password: 'Sapna@117', Stored Hash: '$2y$10$cAQikfvGSyKs4p0mDNX7F.jlQAHyR1n/RSgipVuxXC4tmqkxv2u7W'
+[2026-07-14 09:32:44] PATIENT LOGIN ATTEMPT - Email: 'sskn057@gmail.com', Entered Password: 'Sapna@12', Stored Hash: '$2y$10$cAQikfvGSyKs4p0mDNX7F.jlQAHyR1n/RSgipVuxXC4tmqkxv2u7W'
+[2026-07-14 09:32:57] PATIENT LOGIN ATTEMPT - Email: 'sskn057@gmail.com', Entered Password: 'Sapna@117', Stored Hash: '$2y$10$cAQikfvGSyKs4p0mDNX7F.jlQAHyR1n/RSgipVuxXC4tmqkxv2u7W'
+[2026-07-14 10:40:06] Error [2]: Cannot modify header information - headers already sent by (output started at /var/www/html/pratice/hoperise_medical/scratch/test_ajax.php:7) in /var/www/html/pratice/hoperise_medical/ajax/demo_request.php on line 2
+[2026-07-14 10:41:30] Error [2]: Cannot modify header information - headers already sent by (output started at /var/www/html/pratice/hoperise_medical/scratch/test_admin.php:11) in /var/www/html/pratice/hoperise_medical/admin/demo_requests.php on line 132
+[2026-07-14 12:27:57] Exception: Cannot add or update a child row: a foreign key constraint fails (`hoperise`.`hs_doctor`, CONSTRAINT `fk_doc_sub_category` FOREIGN KEY (`sub_category_id`) REFERENCES `hs_sub_category` (`sub_category_id`) ON DELETE CASCADE) in /var/www/html/pratice/hoperise_medical/admin/register.php on line 74
+Stack trace:
+#0 /var/www/html/pratice/hoperise_medical/admin/register.php(74): mysqli_stmt_execute()
+#1 {main}
+[2026-07-14 12:36:50] Exception: Cannot add or update a child row: a foreign key constraint fails (`hoperise`.`hs_doctor`, CONSTRAINT `fk_doc_sub_category` FOREIGN KEY (`sub_category_id`) REFERENCES `hs_sub_category` (`sub_category_id`) ON DELETE CASCADE) in /var/www/html/pratice/hoperise_medical/admin/register.php on line 74
+Stack trace:
+#0 /var/www/html/pratice/hoperise_medical/admin/register.php(74): mysqli_stmt_execute()
+#1 {main}
+[2026-07-14 12:39:26] Exception: Cannot add or update a child row: a foreign key constraint fails (`hoperise`.`hs_doctor`, CONSTRAINT `fk_doc_sub_category` FOREIGN KEY (`sub_category_id`) REFERENCES `hs_sub_category` (`sub_category_id`) ON DELETE CASCADE) in /var/www/html/pratice/hoperise_medical/admin/register.php on line 74
+Stack trace:
+#0 /var/www/html/pratice/hoperise_medical/admin/register.php(74): mysqli_stmt_execute()
+#1 {main}
