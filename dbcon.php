@@ -31,7 +31,6 @@ define('DB_PASS', getenv('DB_PASS') ?: '');
 define('DB_NAME', getenv('DB_NAME') ?: 'defaultdb');
 define('DB_PORT', getenv('DB_PORT') ?: 25433);
 define('DB_SSL_CA', __DIR__ . '/ca.pem');
-define('DB_SSL_CA', __DIR__ . '/ca.pem');
 
 
 // Gemini API Configuration
