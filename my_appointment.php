@@ -704,14 +704,7 @@ include("includes/main_header.php");
                   </div>
                 </div>
 
-                <div class="col-md-3 col-6">
-                  <div class="glass-card p-3 d-flex align-items-center gap-3">
-                    <div class="bg-info-light text-info rounded p-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; background-color: #ecfeff;">
-                      <i class="bi bi-file-medical fs-4" style="color: #0891b2;"></i>
-                    </div>
-                  </div>
-                </div>
-              </div>
+               
 
               <!-- Consultation Activity Trend Chart -->
               <div class="glass-card p-4 mb-4">
