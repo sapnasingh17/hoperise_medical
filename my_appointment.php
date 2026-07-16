@@ -709,10 +709,6 @@ include("includes/main_header.php");
                     <div class="bg-info-light text-info rounded p-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; background-color: #ecfeff;">
                       <i class="bi bi-file-medical fs-4" style="color: #0891b2;"></i>
                     </div>
-                    <div>
-                      <div class="small text-muted fw-semibold">Medical Reports</div>
-                      <h4 class="mb-0 fw-extrabold text-dark">3</h4>
-                    </div>
                   </div>
                 </div>
               </div>
