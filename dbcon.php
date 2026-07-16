@@ -24,12 +24,15 @@ if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > 
     session_destroy();
 }
 $_SESSION['LAST_ACTIVITY'] = time();
+// Aiven MySQL Database credentials
+define('DB_HOST', getenv('DB_HOST') ?: 'mysql-120c052d-sapnnna988-ee92.a.aivencloud.com');
+define('DB_USER', getenv('DB_USER') ?: 'avnadmin');
+define('DB_PASS', getenv('DB_PASS') ?: '');
+define('DB_NAME', getenv('DB_NAME') ?: 'defaultdb');
+define('DB_PORT', getenv('DB_PORT') ?: 25433);
+define('DB_SSL_CA', __DIR__ . '/ca.pem');
+define('DB_SSL_CA', __DIR__ . '/ca.pem');
 
-// Database credentials
-define('DB_HOST', 'localhost');
-define('DB_USER', 'admin');
-define('DB_PASS', 'Inextrix@1234');
-define('DB_NAME', 'hoperise');
 
 // Gemini API Configuration
 if (!defined('GEMINI_API_KEY')) {
@@ -59,9 +62,27 @@ if (!defined('SMTP_DEBUG_DISPLAY')) {
     define('SMTP_DEBUG_DISPLAY', false);
 }
 
-$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+$conn = mysqli_init();
 
-if (!$conn) {
+mysqli_ssl_set(
+    $conn,
+    NULL,
+    NULL,
+    DB_SSL_CA,
+    NULL,
+    NULL
+);
+
+if (!mysqli_real_connect(
+    $conn,
+    DB_HOST,
+    DB_USER,
+    DB_PASS,
+    DB_NAME,
+    DB_PORT,
+    NULL,
+    MYSQLI_CLIENT_SSL
+)) {
     die("Connection Error !! " . mysqli_connect_error());
 }
 
