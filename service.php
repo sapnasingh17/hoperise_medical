@@ -85,7 +85,13 @@ include_once("includes/main_header.php");
         ?>
         <div class="col-lg-4 col-md-6">
           <div class="glass-card overflow-hidden h-100 d-flex flex-column" id="service<?= $service_row['service_id']; ?>">
-            <img src="images/gallery/1.jpg" alt="Service banner" class="img-fluid w-100" style="height: 200px; object-fit: cover;">
+            <?php
+            $service_img = "images/gallery/1.jpg";
+            if (!empty($service_row['service_thumb']) && file_exists(__DIR__ . "/admin/uploads/" . $service_row['service_thumb'])) {
+                $service_img = "admin/uploads/" . $service_row['service_thumb'];
+            }
+            ?>
+            <img src="<?= $service_img; ?>" alt="Service banner" class="img-fluid w-100" style="height: 200px; object-fit: cover;">
             <div class="p-4 d-flex flex-column flex-grow-1">
               <h5 class="fw-bold text-dark mb-3"><?= htmlspecialchars($service_row['service_title']); ?></h5>
               <p class="text-secondary small flex-grow-1"><?= htmlspecialchars($service_row['service_description']); ?></p>

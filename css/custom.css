@@ -364,6 +364,15 @@ h6, .h6 { font-size: 1.2rem !important; }
 .bg-primary-light {
     background-color: var(--primary-light) !important;
 }
+.bg-success-light {
+    background-color: #e6f7ed !important;
+}
+.bg-warning-light {
+    background-color: #fef3c7 !important;
+}
+.bg-danger-light {
+    background-color: #fee2e2 !important;
+}
 .text-accent {
     color: var(--accent) !important;
 }
@@ -425,5 +434,11 @@ p, .card-text {
 
 .text-accent {
     color: var(--accent) !important;
+}
+
+/* Fix Bootstrap tab content float collapse */
+.tab-content {
+    float: none !important;
+    width: auto !important;
 }
 

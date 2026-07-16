@@ -10,6 +10,13 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Normalize session variables globally for patient portal
+if (isset($_SESSION['user_id']) && !isset($_SESSION['patient_id'])) {
+    $_SESSION['patient_id'] = $_SESSION['user_id'];
+} elseif (isset($_SESSION['patient_id']) && !isset($_SESSION['user_id'])) {
+    $_SESSION['user_id'] = $_SESSION['patient_id'];
+}
+
 // Session Inactivity Timeout (30 minutes)
 $timeout_duration = 1800;
 if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > $timeout_duration)) {
@@ -24,13 +31,23 @@ if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > 
     session_destroy();
 }
 $_SESSION['LAST_ACTIVITY'] = time();
-// Aiven MySQL Database credentials
-define('DB_HOST', getenv('DB_HOST') ?: 'mysql-120c052d-sapnnna988-ee92.a.aivencloud.com');
-define('DB_USER', getenv('DB_USER') ?: 'avnadmin');
-define('DB_PASS', getenv('DB_PASS') ?: '');
-define('DB_NAME', getenv('DB_NAME') ?: 'defaultdb');
-define('DB_PORT', getenv('DB_PORT') ?: 25433);
-define('DB_SSL_CA', __DIR__ . '/ca.pem');
+// Aiven MySQL Database credentials or Local fallback
+$is_production = !empty(getenv('DB_HOST'));
+
+if ($is_production) {
+    define('DB_HOST', getenv('DB_HOST'));
+    define('DB_USER', getenv('DB_USER'));
+    define('DB_PASS', getenv('DB_PASS'));
+    define('DB_NAME', getenv('DB_NAME') ?: 'defaultdb');
+    define('DB_PORT', getenv('DB_PORT') ?: 25433);
+    define('DB_SSL_CA', __DIR__ . '/ca.pem');
+} else {
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'admin');
+    define('DB_PASS', 'Inextrix@1234');
+    define('DB_NAME', 'hoperise');
+    define('DB_PORT', 3306);
+}
 
 
 // Gemini API Configuration
@@ -63,25 +80,37 @@ if (!defined('SMTP_DEBUG_DISPLAY')) {
 
 $conn = mysqli_init();
 
-mysqli_ssl_set(
-    $conn,
-    NULL,
-    NULL,
-    DB_SSL_CA,
-    NULL,
-    NULL
-);
+if ($is_production) {
+    mysqli_ssl_set(
+        $conn,
+        NULL,
+        NULL,
+        DB_SSL_CA,
+        NULL,
+        NULL
+    );
+    $connected = mysqli_real_connect(
+        $conn,
+        DB_HOST,
+        DB_USER,
+        DB_PASS,
+        DB_NAME,
+        DB_PORT,
+        NULL,
+        MYSQLI_CLIENT_SSL
+    );
+} else {
+    $connected = mysqli_real_connect(
+        $conn,
+        DB_HOST,
+        DB_USER,
+        DB_PASS,
+        DB_NAME,
+        DB_PORT
+    );
+}
 
-if (!mysqli_real_connect(
-    $conn,
-    DB_HOST,
-    DB_USER,
-    DB_PASS,
-    DB_NAME,
-    DB_PORT,
-    NULL,
-    MYSQLI_CLIENT_SSL
-)) {
+if (!$connected) {
     die("Connection Error !! " . mysqli_connect_error());
 }
 
@@ -177,8 +206,8 @@ if (!function_exists('validate_file_upload')) {
 }
 
 // Exception and Error Logging Config
-ini_set('display_errors', 0);
-ini_set('display_startup_errors', 0);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 if (!function_exists('secure_error_handler')) {
@@ -186,7 +215,11 @@ if (!function_exists('secure_error_handler')) {
         $log_msg = "[" . date('Y-m-d H:i:s') . "] Error [$errno]: $errstr in $errfile on line $errline\n";
         error_log($log_msg, 3, __DIR__ . '/error.log');
         if ($errno === E_USER_ERROR || $errno === E_COMPILE_ERROR || $errno === E_CORE_ERROR) {
-            die("A system error occurred. Please contact administrator.");
+            if (ini_get('display_errors')) {
+                die("System Error [$errno]: $errstr in $errfile on line $errline");
+            } else {
+                die("A system error occurred. Please contact administrator.");
+            }
         }
         return true;
     }
@@ -197,8 +230,34 @@ if (!function_exists('secure_exception_handler')) {
     function secure_exception_handler($exception) {
         $log_msg = "[" . date('Y-m-d H:i:s') . "] Exception: " . $exception->getMessage() . " in " . $exception->getFile() . " on line " . $exception->getLine() . "\nStack trace:\n" . $exception->getTraceAsString() . "\n";
         error_log($log_msg, 3, __DIR__ . '/error.log');
-        die("A system exception occurred. Please contact administrator.");
+        if (ini_get('display_errors')) {
+            die("System Exception: " . $exception->getMessage() . " in " . $exception->getFile() . " on line " . $exception->getLine() . "<br><pre>" . $exception->getTraceAsString() . "</pre>");
+        } else {
+            die("A system exception occurred. Please contact administrator.");
+        }
     }
 }
 set_exception_handler('secure_exception_handler');
+
+// Initialize Company Settings if table exists
+$settings_query = mysqli_query($conn, "SELECT * FROM company_settings LIMIT 1");
+if ($settings_query) {
+    if (mysqli_num_rows($settings_query) == 0) {
+        mysqli_query($conn, "INSERT INTO company_settings (hospital_name, tagline, logo, favicon, address, phone, email, website, copyright_text) VALUES ('HopeRise Medical', 'Your Health, Our Ultimate Mission', NULL, NULL, '123 Medical Way', '9876543210', 'info@hoperise.com', 'www.hoperise.com', '© 2026 HopeRise Medical. All Rights Reserved.')");
+        $settings_query = mysqli_query($conn, "SELECT * FROM company_settings LIMIT 1");
+    }
+    $GLOBALS['company_settings'] = mysqli_fetch_assoc($settings_query);
+} else {
+    $GLOBALS['company_settings'] = [
+        'hospital_name' => 'HopeRise Medical',
+        'tagline' => 'Your Health, Our Ultimate Mission',
+        'logo' => NULL,
+        'favicon' => NULL,
+        'address' => '123 Medical Way',
+        'phone' => '9876543210',
+        'email' => 'info@hoperise.com',
+        'website' => 'www.hoperise.com',
+        'copyright_text' => '© 2026 HopeRise Medical. All Rights Reserved.'
+    ];
+}
 ?>

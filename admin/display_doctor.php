@@ -50,30 +50,7 @@
             
                                 </tr>
                             </thead>
-                            <tfoot>
-                                <tr>
-                                
-                                    
-                                    
-                                <th>Category Name</th>
-                                    <th>Sub Category Name</th>
-                                    <th>Service Title</th>
-                                    <th>Doctor Fname</th>
-                                    <th>Doctor Mname</th>
-                                    <th>Doctor Lname</th>
-                                    <th>Doctor Email</th>
-                                    <th>Doctor Password</th>
-                                    <th>Doctor Phone</th>
-                                    <th>Doctor Address</th>
-                                    <th>Doctor Dob</th>
-                                    <th>Doctor Doj</th>
-                                    <th>Doctor Gender</th>
-                                    <th>Doctor Thumb</th>
-                                    <th>Edit</th>
-                                    <th>Delete</th>
-                               
-                                </tr>
-                            </tfoot>
+                           
                             <tbody>
                                 <?php
                                 // Old Logic:

@@ -31,9 +31,12 @@ $user_avatar = './assets/img/admin-avatar.png'; // default
 $display_name = '';
 
 if ($role == 'admin') {
-    list($css_stmt, $css_res) = db_query_prepared($conn, "SELECT admin_username FROM hs_admin WHERE admin_id = ?", [$admin_id]);
+    list($css_stmt, $css_res) = db_query_prepared($conn, "SELECT admin_username, admin_thumb FROM hs_admin WHERE admin_id = ?", [$admin_id]);
     if ($css_res && $css_row = mysqli_fetch_assoc($css_res)) {
         $display_name = $css_row['admin_username'];
+        if (!empty($css_row['admin_thumb'])) {
+            $user_avatar = 'uploads/' . $css_row['admin_thumb'];
+        }
     }
     if ($css_stmt) mysqli_stmt_close($css_stmt);
 } elseif ($role == 'doctor') {

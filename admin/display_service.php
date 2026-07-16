@@ -40,18 +40,7 @@
             
                                 </tr>
                             </thead>
-                            <tfoot>
-                                <tr>
-                                <th> Category Name</th>
-                                    <th>Sub Category Name</th>
-                                    <th>Service Title</th>
-                                    <th>Service Description</th>
-                                    <th>Service Thumb</th>
-                                    <th>Edit</th>
-                                    <th>Delete</th>
-                               
-                                </tr>
-                            </tfoot>
+                            
                             <tbody>
                                 <?php
                                 list($svc_stmt, $service_data) = db_query_prepared($conn, "

@@ -197,6 +197,9 @@ $total_amount = $base_amount + $gst_amount;
           <div class="text-md-end">
             <span class="invoice-title d-block mb-2">TAX INVOICE</span>
             <span class="text-secondary small d-block">Invoice No: <strong>#INV-10<?= $invoice['appointment_id'] ?></strong></span>
+            <?php if (!empty($invoice['transaction_id'])): ?>
+              <span class="text-secondary small d-block">Appt Number: <strong><?= htmlspecialchars($invoice['transaction_id']) ?></strong></span>
+            <?php endif; ?>
             <span class="text-secondary small d-block mb-3">Date: <strong><?= date('d-M-Y', strtotime($invoice['appointment_date'])) ?></strong></span>
             <?php if ($invoice['appointment_payment_status'] == 1): ?>
               <span class="badge-paid"><i class="bi bi-check-circle-fill me-2"></i>PAID</span>

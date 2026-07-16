@@ -10,7 +10,7 @@ if (isset($_GET['appointment_id'])) {
 
 if ($appt_id > 0) {
     // Update the payment status in the database to paid
-    $stmt = mysqli_prepare($conn, "UPDATE hs_appointment SET appointment_payment_status = 1 WHERE appointment_id = ?");
+    $stmt = mysqli_prepare($conn, "UPDATE hs_appointment SET payment_method = 'PayPal', payment_status = 'Paid', appointment_payment_status = 1 WHERE appointment_id = ?");
     if ($stmt) {
         mysqli_stmt_bind_param($stmt, "i", $appt_id);
         mysqli_stmt_execute($stmt);

@@ -39,13 +39,26 @@
                     }
                     if ($dup_stmt) mysqli_stmt_close($dup_stmt);
                     
+                    // Avatar Upload check (optional upload)
+                    $avatar_name = $profile_row['admin_thumb'];
+                    if (isset($_FILES['admin_thumb']) && $_FILES['admin_thumb']['error'] == UPLOAD_ERR_OK) {
+                        $file_validation = validate_file_upload($_FILES['admin_thumb']);
+                        if (!$file_validation['success']) {
+                            $error = $file_validation['message'];
+                        } else {
+                            $avatar_name = $file_validation['new_name'];
+                            $path = "uploads/";
+                            move_uploaded_file($_FILES['admin_thumb']['tmp_name'], $path . $avatar_name);
+                        }
+                    }
+
                     if (empty($error)) {
                         // Update admin details
                         if (!empty($new_password)) {
                             $hashed = password_hash($new_password, PASSWORD_BCRYPT);
-                            list($upd_stmt, $upd_res) = db_query_prepared($conn, "UPDATE hs_admin SET admin_username = ?, admin_email = ?, admin_password = ? WHERE admin_id = ?", [$username, $email, $hashed, $admin_id], 'sssi');
+                            list($upd_stmt, $upd_res) = db_query_prepared($conn, "UPDATE hs_admin SET admin_username = ?, admin_email = ?, admin_password = ?, admin_thumb = ? WHERE admin_id = ?", [$username, $email, $hashed, $avatar_name, $admin_id], 'ssssi');
                         } else {
-                            list($upd_stmt, $upd_res) = db_query_prepared($conn, "UPDATE hs_admin SET admin_username = ?, admin_email = ? WHERE admin_id = ?", [$username, $email, $admin_id], 'ssi');
+                            list($upd_stmt, $upd_res) = db_query_prepared($conn, "UPDATE hs_admin SET admin_username = ?, admin_email = ?, admin_thumb = ? WHERE admin_id = ?", [$username, $email, $avatar_name, $admin_id], 'sssi');
                         }
                         
                         if ($upd_res) {
@@ -130,6 +143,9 @@
             // Refresh dynamic user_avatar and display_name for header/sidebar
             if ($role == 'admin') {
                 $display_name = $profile_row['admin_username'];
+                if (!empty($profile_row['admin_thumb'])) {
+                    $user_avatar = 'uploads/' . $profile_row['admin_thumb'];
+                }
             } else {
                 $display_name = $profile_row['doctor_fname'] . ' ' . $profile_row['doctor_lname'];
                 if (!empty($profile_row['doctor_thumb'])) {
@@ -366,6 +382,11 @@
                                                 <div class="form-group">
                                                     <label>Email</label>
                                                     <input class="form-control" type="email" name="email" value="<?php echo esc($profile_row['admin_email'] ?? ''); ?>" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Profile Avatar</label>
+                                                    <input class="form-control-file" type="file" name="admin_thumb">
+                                                    <small class="form-text text-muted">Leave empty to keep current avatar.</small>
                                                 </div>
                                             <?php elseif ($role == 'doctor'): ?>
                                                 <div class="row">

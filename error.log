@@ -69,3 +69,14 @@ Stack trace:
 Stack trace:
 #0 /var/www/html/pratice/hoperise_medical/admin/register.php(74): mysqli_stmt_execute()
 #1 {main}
+[2026-07-16 13:11:26] Error [2]: Undefined array key "user_id" in /var/www/html/pratice/hoperise_medical/scratch/test_portal.php on line 12
+[2026-07-16 14:59:44] Error [2]: Cannot modify header information - headers already sent by (output started at /var/www/html/pratice/hoperise_medical/scratch/run_full_booking_flow_test.php:12) in /var/www/html/pratice/hoperise_medical/api_process_payment.php on line 3
+[2026-07-16 14:59:54] Exception: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '? AND appointment_description = 'E2E Integration Test'' at line 1 in /var/www/html/pratice/hoperise_medical/scratch/run_full_booking_flow_test.php on line 124
+Stack trace:
+#0 /var/www/html/pratice/hoperise_medical/scratch/run_full_booking_flow_test.php(124): mysqli_query()
+#1 {main}
+[2026-07-16 15:00:05] Error [2]: Cannot modify header information - headers already sent by (output started at /var/www/html/pratice/hoperise_medical/scratch/run_full_booking_flow_test.php:12) in /var/www/html/pratice/hoperise_medical/api_process_payment.php on line 3
+[2026-07-16 15:12:43] Error [2]: Cannot modify header information - headers already sent by (output started at /var/www/html/pratice/hoperise_medical/scratch/run_test.php:34) in /var/www/html/pratice/hoperise_medical/paypal_success.php on line 30
+[2026-07-16 16:07:16] Error [2]: Cannot modify header information - headers already sent by (output started at /var/www/html/pratice/hoperise_medical/scratch/test_cash_on_visit.php:24) in /var/www/html/pratice/hoperise_medical/payment.php on line 82
+[2026-07-16 16:21:02] Error [2]: Cannot modify header information - headers already sent by (output started at /var/www/html/pratice/hoperise_medical/scratch/test_cash_on_visit.php:24) in /var/www/html/pratice/hoperise_medical/payment.php on line 82
+[2026-07-16 16:24:19] Error [2]: Cannot modify header information - headers already sent by (output started at /var/www/html/pratice/hoperise_medical/scratch/test_cash_on_visit.php:24) in /var/www/html/pratice/hoperise_medical/payment.php on line 114

@@ -39,7 +39,7 @@
             
                                 </tr>
                             </thead>
-                            <tfoot>
+                            <!-- <tfoot>
                                 <tr>
                                     <th> category name</th>
                                     <th>sub category Title</th>
@@ -49,7 +49,7 @@
                                     <th>Delete</th>
                                
                                 </tr>
-                            </tfoot>
+                            </tfoot> -->
                             <tbody>
                                 <?php
                                 list($subcat_stmt, $sub_category_data) = db_query_prepared($conn, "SELECT sc.*, c.category_title FROM hs_sub_category sc LEFT JOIN hs_category c ON sc.category_id = c.category_id");

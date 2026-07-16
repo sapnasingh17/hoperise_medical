@@ -11,8 +11,10 @@
 <!-- FancyBox -->
 <script src="plugins/fancybox/jquery.fancybox.min.js"></script>
 <!-- Google Map -->
+<?php if (basename($_SERVER['PHP_SELF']) == 'contact.php'): ?>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCC72vZw-6tGqFyRhhg5CkF2fqfILn2Tsw"></script>
-<script src="plugins/google-map/gmap.js"></script>
+<script src="plugins/google-map/gmap.js?v=<?= time(); ?>"></script>
+<?php endif; ?>
 
 <script src="plugins/validate.js"></script>
 <script src="plugins/wow.js"></script>

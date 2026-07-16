@@ -1,13 +1,46 @@
 <?php
 include_once("dbcon.php");
 
-// Redirect guest users to login page to prevent booking/viewing without an account
-if (!isset($_SESSION['patient_id'])) {
+// 4. Check session authentication.
+if (!isset($_SESSION['user_id']) && !isset($_SESSION['patient_id'])) {
     header("Location: login.php");
     exit();
 }
 
-$patient_id = intval($_SESSION['patient_id']);
+// Map user_id and patient_id for consistency
+if (isset($_SESSION['user_id']) && !isset($_SESSION['patient_id'])) {
+    $_SESSION['patient_id'] = $_SESSION['user_id'];
+} elseif (isset($_SESSION['patient_id']) && !isset($_SESSION['user_id'])) {
+    $_SESSION['user_id'] = $_SESSION['patient_id'];
+}
+
+$user_id = intval($_SESSION['user_id']);
+
+// 6. If patient_id is stored in patients table, first get patient ID:
+$patient_id = $user_id; // Default fallback
+$table_chk_hs = mysqli_query($conn, "SHOW TABLES LIKE 'hs_patient'");
+if ($table_chk_hs && mysqli_num_rows($table_chk_hs) > 0) {
+    list($p_stmt_chk, $p_res_chk) = db_query_prepared($conn, "SELECT patient_id FROM hs_patient WHERE patient_id = ?", [$user_id], 'i');
+    if ($p_res_chk && mysqli_num_rows($p_res_chk) > 0) {
+        $row_p = mysqli_fetch_assoc($p_res_chk);
+        $patient_id = intval($row_p['patient_id']);
+    }
+    if ($p_stmt_chk) {
+        mysqli_stmt_close($p_stmt_chk);
+    }
+} else {
+    $table_chk_p = mysqli_query($conn, "SHOW TABLES LIKE 'patients'");
+    if ($table_chk_p && mysqli_num_rows($table_chk_p) > 0) {
+        list($p_stmt_chk, $p_res_chk) = db_query_prepared($conn, "SELECT id FROM patients WHERE user_id = ?", [$user_id], 'i');
+        if ($p_res_chk && mysqli_num_rows($p_res_chk) > 0) {
+            $row_p = mysqli_fetch_assoc($p_res_chk);
+            $patient_id = intval($row_p['id']);
+        }
+        if ($p_stmt_chk) {
+            mysqli_stmt_close($p_stmt_chk);
+        }
+    }
+}
 
 $profile_errors = [];
 $profile_success = "";
@@ -292,44 +325,43 @@ $confirmed_bookings = 0;
 $pending_bookings = 0;
 $paid_amount = 0;
 
-$stats_stmt = mysqli_prepare($conn, "SELECT 
+// 8. Fix dashboard cards also
+list($stats_stmt, $stats_result) = db_query_prepared($conn, "SELECT 
     COUNT(*) as total,
-    SUM(CASE WHEN appointment_status = 'Accept' THEN 1 ELSE 0 END) as confirmed,
-    SUM(CASE WHEN appointment_status = 'Pending' OR appointment_status = '' OR appointment_status IS NULL THEN 1 ELSE 0 END) as pending,
+    SUM(CASE WHEN appointment_status = 'Accept' OR appointment_status = 'Confirmed' OR appointment_status = 'Completed' THEN 1 ELSE 0 END) as confirmed,
+    SUM(CASE WHEN appointment_status = 'Pending' OR appointment_status = 'pending' OR appointment_status = '' OR appointment_status IS NULL THEN 1 ELSE 0 END) as pending,
     SUM(CASE WHEN appointment_payment_status = 1 THEN 500 ELSE 0 END) as paid
-    FROM hs_appointment WHERE patient_id = ?");
+    FROM hs_appointment WHERE patient_id = ?", [$patient_id], 'i');
+
+if ($stats_result && $row_stats = mysqli_fetch_assoc($stats_result)) {
+    $total_bookings = intval($row_stats['total']);
+    $confirmed_bookings = intval($row_stats['confirmed']);
+    $pending_bookings = intval($row_stats['pending']);
+    $paid_amount = intval($row_stats['paid']);
+}
 if ($stats_stmt) {
-    mysqli_stmt_bind_param($stats_stmt, "i", $patient_id);
-    mysqli_stmt_execute($stats_stmt);
-    $stats_result = mysqli_stmt_get_result($stats_stmt);
-    if ($row_stats = mysqli_fetch_assoc($stats_result)) {
-        $total_bookings = intval($row_stats['total']);
-        $confirmed_bookings = intval($row_stats['confirmed']);
-        $pending_bookings = intval($row_stats['pending']);
-        $paid_amount = intval($row_stats['paid']);
-    }
     mysqli_stmt_close($stats_stmt);
 }
 
 // Fetch dynamic monthly chart data
 $monthly_labels = [];
 $monthly_counts = [];
-$chart_stmt = mysqli_prepare($conn, "SELECT 
+list($chart_stmt, $chart_result) = db_query_prepared($conn, "SELECT 
     DATE_FORMAT(appointment_date, '%b %Y') as month_label,
     COUNT(*) as count
     FROM hs_appointment 
     WHERE patient_id = ? 
     GROUP BY DATE_FORMAT(appointment_date, '%b %Y'), DATE_FORMAT(appointment_date, '%Y-%m')
     ORDER BY DATE_FORMAT(appointment_date, '%Y-%m') ASC
-    LIMIT 6");
-if ($chart_stmt) {
-    mysqli_stmt_bind_param($chart_stmt, "i", $patient_id);
-    mysqli_stmt_execute($chart_stmt);
-    $chart_result = mysqli_stmt_get_result($chart_stmt);
+    LIMIT 6", [$patient_id], 'i');
+
+if ($chart_result) {
     while ($c_row = mysqli_fetch_assoc($chart_result)) {
         $monthly_labels[] = $c_row['month_label'];
         $monthly_counts[] = intval($c_row['count']);
     }
+}
+if ($chart_stmt) {
     mysqli_stmt_close($chart_stmt);
 }
 
@@ -340,20 +372,40 @@ if (empty($monthly_labels)) {
 }
 
 // Early load of all appointments for upcoming/past list and stats widgets
-$sql_app = "SELECT a.*, 
-               c.category_title, 
-               sc.sub_category_title, 
-               s.service_title, 
-               d.doctor_fname, d.doctor_lname, d.doctor_id,
-               p.patient_id, p.patient_fname, p.patient_lname
-        FROM hs_appointment a
-        LEFT JOIN hs_category c ON a.category_id = c.category_id
-        LEFT JOIN hs_sub_category sc ON a.sub_category_id = sc.sub_category_id
-        LEFT JOIN hs_service s ON a.service_id = s.service_id
-        LEFT JOIN hs_doctor d ON a.doctor_id = d.doctor_id
-        LEFT JOIN hs_patient p ON a.patient_id = p.patient_id
-        WHERE a.patient_id = ?
-        ORDER BY a.appointment_date DESC, a.appointment_time DESC";
+$use_hs_tables = false;
+$table_chk_app = mysqli_query($conn, "SHOW TABLES LIKE 'hs_appointment'");
+if ($table_chk_app && mysqli_num_rows($table_chk_app) > 0) {
+    $use_hs_tables = true;
+}
+
+if ($use_hs_tables) {
+    $sql_app = "SELECT a.*, 
+                   c.category_title, 
+                   sc.sub_category_title, 
+                   s.service_title, 
+                   d.doctor_fname, d.doctor_lname, d.doctor_id,
+                   p.patient_id, p.patient_fname, p.patient_lname
+            FROM hs_appointment a
+            LEFT JOIN hs_category c ON a.category_id = c.category_id
+            LEFT JOIN hs_sub_category sc ON a.sub_category_id = sc.sub_category_id
+            LEFT JOIN hs_service s ON a.service_id = s.service_id
+            LEFT JOIN hs_doctor d ON a.doctor_id = d.doctor_id
+            LEFT JOIN hs_patient p ON a.patient_id = p.patient_id
+            WHERE a.patient_id = ?
+            ORDER BY a.appointment_date DESC, a.appointment_time DESC";
+} else {
+    // Schema fallback
+    $sql_app = "SELECT 
+                    a.*,
+                    d.name AS doctor_name,
+                    dep.name AS department_name
+                FROM appointments a
+                JOIN doctors d ON a.doctor_id = d.id
+                JOIN departments dep ON d.department_id = dep.id
+                WHERE a.patient_id = ?
+                ORDER BY a.appointment_date DESC";
+}
+
 list($app_stmt, $appoinment_data_res) = db_query_prepared($conn, $sql_app, [$patient_id], 'i');
 
 $upcoming_appointments = [];
@@ -363,10 +415,28 @@ $today_str = date('Y-m-d');
 
 if ($appoinment_data_res) {
     while($row = mysqli_fetch_array($appoinment_data_res)) {
+        // Normalize fields to ensure full compatibility with the UI in both database environments
+        if (!isset($row['appointment_id']) && isset($row['id'])) {
+            $row['appointment_id'] = $row['id'];
+        }
+        if (!isset($row['appointment_status']) && isset($row['status'])) {
+            $row['appointment_status'] = $row['status'];
+        }
+        if (!isset($row['doctor_fname']) && isset($row['doctor_name'])) {
+            $row['doctor_fname'] = $row['doctor_name'];
+            $row['doctor_lname'] = '';
+        }
+        if (!isset($row['category_title']) && isset($row['department_name'])) {
+            $row['category_title'] = $row['department_name'];
+        }
+        if (!isset($row['service_title'])) {
+            $row['service_title'] = $row['category_title'] ?? '';
+        }
+
         $all_appointments[] = $row;
-        $status = $row['appointment_status'];
+        $status = $row['appointment_status'] ?? 'pending';
         $app_date = $row['appointment_date'];
-        if ($app_date >= $today_str && $status !== 'Cancel' && $status !== 'Reject') {
+        if ($app_date >= $today_str && strcasecmp($status, 'Cancel') !== 0 && strcasecmp($status, 'Reject') !== 0) {
             $upcoming_appointments[] = $row;
         } else {
             $past_appointments[] = $row;
@@ -383,6 +453,9 @@ foreach ($all_appointments as $appt) {
     }
 }
 
+// 7. Define $appointments for debugging
+$appointments = $all_appointments;
+
 // Next visit appointment
 $next_visit = null;
 if (!empty($upcoming_appointments)) {
@@ -398,6 +471,7 @@ include("includes/main_header.php");
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <body>
+
 <div class="page-wrapper">
   <!-- Top header components -->
   <?php include("includes/top_header.php"); ?>
@@ -410,7 +484,7 @@ include("includes/main_header.php");
       <div class="row align-items-center">
         <div class="col-md-8">
           <span class="badge bg-primary text-white px-3 py-2 rounded-pill mb-2 fw-semibold">Patient Portal</span>
-          <h1 class="display-6 fw-bold text-dark mb-1">Welcome, <?= isset($_SESSION['patient_fname']) ? htmlspecialchars($_SESSION['patient_fname']) : 'Sapna' ?> 👋</h1>
+          <h1 class="display-6 fw-bold text-dark mb-1">Welcome, <?= htmlspecialchars($patient_fname) ?> 👋</h1>
           <?php
           $hour = intval(date('H'));
           if ($hour < 12) {
@@ -581,30 +655,14 @@ include("includes/main_header.php");
                   
                   <button class="btn btn-premium btn-lg w-100 shadow-premium-glowing" onclick="alert('Connecting to Telehealth Meeting...')"><i class="bi bi-camera-video-fill me-2"></i>Join Meeting</button>
                 <?php else: ?>
-                  <div class="row g-3 mb-4">
-                    <div class="col-sm-6">
-                      <div class="text-muted small">Doctor</div>
-                      <div class="fw-bold text-dark fs-5">Dr. swati singh</div>
+                  <div class="text-center py-4">
+                    <div class="text-primary-light mb-3">
+                      <i class="bi bi-calendar-x fs-1 text-muted opacity-50"></i>
                     </div>
-                    <div class="col-sm-6">
-                      <div class="text-muted small">Department</div>
-                      <div class="fw-bold text-dark fs-5">Pediatrics</div>
-                    </div>
-                    <div class="col-sm-6">
-                      <div class="text-muted small">Time</div>
-                      <div class="fw-bold text-dark"><i class="bi bi-calendar-event text-primary me-2"></i><?= date('D, M d, Y', strtotime('+1 day')) ?> &bull; 10:00 AM</div>
-                    </div>
-                    <div class="col-sm-6">
-                      <div class="text-muted small">Room</div>
-                      <div class="fw-bold text-dark"><i class="bi bi-laptop text-primary me-2"></i>Room 102 (Virtual)</div>
-                    </div>
-                    <div class="col-sm-6">
-                      <div class="text-muted small">Status</div>
-                      <span class="badge bg-success px-2 py-1 small">Confirmed</span>
-                    </div>
+                    <h5 class="fw-bold text-dark mb-1">No upcoming appointments found</h5>
+                    <p class="text-secondary small mb-3">You don't have any sessions scheduled at the moment.</p>
+                    <a href="add_appointment.php" class="btn btn-premium btn-sm"><i class="bi bi-calendar-plus-fill me-2"></i>Book Your First Visit</a>
                   </div>
-                  
-                  <button class="btn btn-premium btn-lg w-100 shadow-premium-glowing" onclick="alert('Connecting to Telehealth Meeting...')"><i class="bi bi-camera-video-fill me-2"></i>Join Meeting</button>
                 <?php endif; ?>
               </div>
 
@@ -815,7 +873,7 @@ include("includes/main_header.php");
                             <tr class="empty-state-placeholder">
                               <td colspan="6" class="text-center py-5 text-muted">
                                 <i class="bi bi-calendar-x fs-1 mb-2 d-block text-light-emphasis"></i>
-                                <span>No upcoming appointments scheduled.</span>
+                                <span>No upcoming appointments found</span>
                               </td>
                             </tr>
                           <?php endif; ?>
@@ -912,70 +970,90 @@ include("includes/main_header.php");
               <div class="glass-card p-4 mb-4" id="notifications-card">
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-bell-fill text-primary me-2"></i>Notifications</h5>
                 <div class="d-flex flex-column gap-3">
-                  <!-- 1. Appointment Confirmed -->
-                  <div class="p-3 rounded bg-success-light border-start border-success border-3 d-flex align-items-start gap-3" style="background-color: #f0fdf4;">
-                    <i class="bi bi-calendar-check-fill text-success fs-5"></i>
-                    <div>
-                      <div class="fw-bold text-dark small">Appointment Confirmed</div>
-                      <div class="text-secondary small">Your consultation with Dr. swati singh is confirmed.</div>
-                    </div>
-                  </div>
+                  <?php
+                  $notifications = [];
 
-                  <!-- 2. Prescription Uploaded -->
-                  <div class="p-3 rounded bg-primary-light border-start border-primary border-3 d-flex align-items-start gap-3" style="background-color: #f0f6ff;">
-                    <i class="bi bi-file-earmark-medical-fill text-primary fs-5"></i>
-                    <div>
-                      <div class="fw-bold text-dark small">Prescription Uploaded</div>
-                      <div class="text-secondary small">New treatment prescription has been uploaded by your doctor.</div>
-                    </div>
-                  </div>
-
-                  <!-- 3. Payment Successful -->
-                  <?php if ($paid_amount > 0): ?>
-                    <div class="p-3 rounded bg-success-light border-start border-success border-3 d-flex align-items-start gap-3" style="background-color: #f0fdf4;">
-                      <i class="bi bi-credit-card-2-front-fill text-success fs-5"></i>
-                      <div>
-                        <div class="fw-bold text-dark small">Payment Successful</div>
-                        <div class="text-secondary small">Invoice of ₹<?= $paid_amount ?> was paid successfully.</div>
-                      </div>
-                    </div>
-                  <?php else: ?>
-                    <div class="p-3 rounded bg-success-light border-start border-success border-3 d-flex align-items-start gap-3" style="background-color: #f0fdf4;">
-                      <i class="bi bi-credit-card-2-front-fill text-success fs-5" style="color: #16a34a;"></i>
-                      <div>
-                        <div class="fw-bold text-dark small">Payment Successful</div>
-                        <div class="text-secondary small">Invoice of ₹500 was paid successfully.</div>
-                      </div>
-                    </div>
-                  <?php endif; ?>
-
-                  <!-- 4. Reminder Tomorrow -->
-                  <?php 
-                  $tomorrow_str = date('Y-m-d', strtotime('+1 day'));
-                  $appt_tomorrow = null;
-                  foreach ($upcoming_appointments as $appt) {
-                      if ($appt['appointment_date'] === $tomorrow_str) {
-                          $appt_tomorrow = $appt;
-                          break;
+                  // 1. Check for next upcoming visit
+                  if ($next_visit) {
+                      $doc_full = "Dr. " . htmlspecialchars($next_visit['doctor_fname'] . " " . $next_visit['doctor_lname']);
+                      $is_accepted = (strcasecmp($next_visit['appointment_status'] ?? '', 'Accept') === 0 || strcasecmp($next_visit['appointment_status'] ?? '', 'Confirmed') === 0);
+                      
+                      if ($is_accepted) {
+                          $notifications[] = [
+                              'title' => 'Appointment Confirmed',
+                              'text' => "Your consultation with {$doc_full} is confirmed.",
+                              'type' => 'success',
+                              'icon' => 'bi-calendar-check-fill'
+                          ];
+                      } else {
+                          $notifications[] = [
+                              'title' => 'Appointment Pending',
+                              'text' => "Your consultation request with {$doc_full} is pending review.",
+                              'type' => 'primary',
+                              'icon' => 'bi-calendar-fill'
+                          ];
+                      }
+                      
+                      // Check if tomorrow
+                      if ($next_visit['appointment_date'] === date('Y-m-d', strtotime('+1 day'))) {
+                          $notifications[] = [
+                              'title' => 'Reminder Tomorrow',
+                              'text' => "You have a visit with {$doc_full} tomorrow at " . date('h:i A', strtotime($next_visit['appointment_time'])) . ".",
+                              'type' => 'warning',
+                              'icon' => 'bi-exclamation-triangle-fill'
+                          ];
                       }
                   }
-                  if ($appt_tomorrow): 
+
+                  // 2. Check for completed consultations for prescriptions/reports
+                  $completed_appts = [];
+                  foreach ($all_appointments as $appt) {
+                      if (strcasecmp($appt['appointment_status'] ?? '', 'Accept') === 0) {
+                          $completed_appts[] = $appt;
+                      }
+                  }
+
+                  if (!empty($completed_appts)) {
+                      $latest_comp = $completed_appts[0];
+                      $doc_full = "Dr. " . htmlspecialchars($latest_comp['doctor_fname'] . " " . $latest_comp['doctor_lname']);
+                      $notifications[] = [
+                          'title' => 'Prescription Uploaded',
+                          'text' => "New treatment prescription has been uploaded by {$doc_full}.",
+                          'type' => 'primary',
+                          'icon' => 'bi-file-earmark-medical-fill'
+                      ];
+                  }
+
+                  // 3. Check for successful payments
+                  if ($paid_amount > 0) {
+                      $notifications[] = [
+                          'title' => 'Payment Successful',
+                          'text' => "Invoice of ₹{$paid_amount} was paid successfully.",
+                          'type' => 'success',
+                          'icon' => 'bi-credit-card-2-front-fill'
+                      ];
+                  }
+
+                  if (!empty($notifications)):
+                      foreach ($notifications as $notif): 
+                          $bg_class = $notif['type'] === 'success' ? 'bg-success-light' : ($notif['type'] === 'warning' ? 'bg-warning-light' : 'bg-primary-light');
+                          $border_class = $notif['type'] === 'success' ? 'border-success' : ($notif['type'] === 'warning' ? 'border-warning' : 'border-primary');
+                          $text_class = $notif['type'] === 'success' ? 'text-success' : ($notif['type'] === 'warning' ? 'text-warning' : 'text-primary');
+                          $bg_color = $notif['type'] === 'success' ? '#f0fdf4' : ($notif['type'] === 'warning' ? '#fffbeb' : '#f0f6ff');
                   ?>
-                    <div class="p-3 rounded bg-warning-light border-start border-warning border-3 d-flex align-items-start gap-3" style="background-color: #fffbeb;">
-                      <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
-                      <div>
-                        <div class="fw-bold text-dark small">Reminder Tomorrow</div>
-                        <div class="text-secondary small">You have a visit with Dr. <?= htmlspecialchars($appt_tomorrow['doctor_fname']) ?> tomorrow at <?= date('h:i A', strtotime($appt_tomorrow['appointment_time'])) ?>.</div>
-                      </div>
-                    </div>
+                          <div class="p-3 rounded <?= $bg_class ?> border-start <?= $border_class ?> border-3 d-flex align-items-start gap-3" style="background-color: <?= $bg_color ?>;">
+                            <i class="bi <?= $notif['icon'] ?> <?= $text_class ?> fs-5"></i>
+                            <div>
+                              <div class="fw-bold text-dark small"><?= $notif['title'] ?></div>
+                              <div class="text-secondary small"><?= $notif['text'] ?></div>
+                            </div>
+                          </div>
+                      <?php endforeach; ?>
                   <?php else: ?>
-                    <div class="p-3 rounded bg-warning-light border-start border-warning border-3 d-flex align-items-start gap-3" style="background-color: #fffbeb;">
-                      <i class="bi bi-exclamation-triangle-fill text-warning fs-5" style="color: #d97706;"></i>
-                      <div>
-                        <div class="fw-bold text-dark small">Reminder Tomorrow</div>
-                        <div class="text-secondary small">You have an upcoming consultation with Dr. swati tomorrow.</div>
+                      <div class="text-center py-4 text-muted">
+                        <i class="bi bi-bell-slash fs-2 mb-2 d-block text-secondary opacity-50"></i>
+                        <span class="small">No new notifications.</span>
                       </div>
-                    </div>
                   <?php endif; ?>
                 </div>
               </div>
@@ -1015,19 +1093,9 @@ include("includes/main_header.php");
                       </div>
                     <?php endforeach; ?>
                   <?php else: ?>
-                    <div class="d-flex align-items-center justify-content-between p-2 rounded border bg-light-subtle">
-                      <div class="d-flex align-items-center gap-2">
-                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                          <i class="bi bi-person-fill"></i>
-                        </div>
-                        <div>
-                          <div class="fw-bold text-dark small">Dr. XYZ</div>
-                          <div class="text-muted small fs-7">Cardiology</div>
-                        </div>
-                      </div>
-                      <div class="text-warning small">
-                        <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
-                      </div>
+                    <div class="text-center py-3 text-muted">
+                      <i class="bi bi-people fs-3 mb-2 d-block text-secondary opacity-50"></i>
+                      <span class="small">No practitioners assigned yet.</span>
                     </div>
                   <?php endif; ?>
                 </div>
@@ -1037,32 +1105,29 @@ include("includes/main_header.php");
               <div class="glass-card p-4 mb-4" id="medical-reports">
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-file-earmark-medical-fill text-primary me-2"></i>Reports</h5>
                 <div class="d-flex flex-column gap-2">
-                  <!-- Blood Test -->
-                  <div class="p-2 border rounded bg-white d-flex align-items-center justify-content-between shadow-sm">
-                    <div>
-                      <div class="fw-bold text-dark small">Blood Test</div>
-                      <div class="text-muted fs-7">CBC &amp; Lipid Profile &bull; Completed</div>
+                  <?php if (!empty($completed_appts)): ?>
+                    <?php foreach (array_slice($completed_appts, 0, 2) as $appt): ?>
+                      <div class="p-2 border rounded bg-white d-flex align-items-center justify-content-between shadow-sm">
+                        <div>
+                          <div class="fw-bold text-dark small">Consultation Summary</div>
+                          <div class="text-muted fs-7">Dr. <?= htmlspecialchars($appt['doctor_fname'] . " " . $appt['doctor_lname']) ?> &bull; Completed</div>
+                        </div>
+                        <a href="#" onclick="alert('Downloading Consultation Report PDF...')" class="btn btn-sm btn-outline-primary px-2 py-1"><i class="bi bi-download"></i> Download PDF</a>
+                      </div>
+                      <div class="p-2 border rounded bg-white d-flex align-items-center justify-content-between shadow-sm">
+                        <div>
+                          <div class="fw-bold text-dark small">Prescription</div>
+                          <div class="text-muted fs-7">Dr. <?= htmlspecialchars($appt['doctor_fname'] . " " . $appt['doctor_lname']) ?> &bull; Active</div>
+                        </div>
+                        <a href="#" onclick="alert('Downloading Prescription PDF...')" class="btn btn-sm btn-outline-primary px-2 py-1"><i class="bi bi-download"></i> Download PDF</a>
+                      </div>
+                    <?php endforeach; ?>
+                  <?php else: ?>
+                    <div class="text-center py-3 text-muted">
+                      <i class="bi bi-file-earmark-medical fs-3 mb-2 d-block text-secondary opacity-50"></i>
+                      <span class="small">No reports uploaded yet.</span>
                     </div>
-                    <a href="#" onclick="alert('Downloading Blood Test Report PDF...')" class="btn btn-sm btn-outline-primary px-2 py-1"><i class="bi bi-download"></i> Download PDF</a>
-                  </div>
-
-                  <!-- X-Ray -->
-                  <div class="p-2 border rounded bg-white d-flex align-items-center justify-content-between shadow-sm">
-                    <div>
-                      <div class="fw-bold text-dark small">X-Ray</div>
-                      <div class="text-muted fs-7">Chest PA View &bull; Completed</div>
-                    </div>
-                    <a href="#" onclick="alert('Downloading Chest X-Ray Report PDF...')" class="btn btn-sm btn-outline-primary px-2 py-1"><i class="bi bi-download"></i> Download PDF</a>
-                  </div>
-
-                  <!-- Prescription -->
-                  <div class="p-2 border rounded bg-white d-flex align-items-center justify-content-between shadow-sm">
-                    <div>
-                      <div class="fw-bold text-dark small">Prescription</div>
-                      <div class="text-muted fs-7">Dr. swati singh &bull; Active</div>
-                    </div>
-                    <a href="#" onclick="alert('Downloading Prescription PDF...')" class="btn btn-sm btn-outline-primary px-2 py-1"><i class="bi bi-download"></i> Download PDF</a>
-                  </div>
+                  <?php endif; ?>
                 </div>
               </div>
 
@@ -1073,7 +1138,7 @@ include("includes/main_header.php");
                   <?php 
                   $prescriptions = [];
                   foreach ($past_appointments as $appt) {
-                      if ($appt['appointment_status'] === 'Accept') {
+                      if (strcasecmp($appt['appointment_status'] ?? '', 'Accept') === 0) {
                           $prescriptions[] = [
                               'id' => $appt['appointment_id'],
                               'doctor' => 'Dr. ' . $appt['doctor_fname'] . ' ' . $appt['doctor_lname'],
@@ -1093,20 +1158,10 @@ include("includes/main_header.php");
                       </div>
                     <?php endforeach; ?>
                   <?php else: ?>
-                      <div class="p-2 border rounded bg-white d-flex align-items-center justify-content-between shadow-sm">
-                        <div>
-                          <div class="fw-bold text-dark small">Vitamin Supplements</div>
-                          <div class="text-muted fs-7">Dr. swati singh &bull; 1 Tablet after lunch</div>
-                        </div>
-                        <a href="#" onclick="alert('Downloading prescription PDF...')" class="btn btn-sm btn-outline-primary px-2 py-1"><i class="bi bi-download"></i> Download PDF</a>
-                      </div>
-                      <div class="p-2 border rounded bg-white d-flex align-items-center justify-content-between shadow-sm">
-                        <div>
-                          <div class="fw-bold text-dark small">Amoxicillin 500mg</div>
-                          <div class="text-muted fs-7">Dr. swati singh &bull; 1 Tablet twice daily</div>
-                        </div>
-                        <a href="#" onclick="alert('Downloading prescription PDF...')" class="btn btn-sm btn-outline-primary px-2 py-1"><i class="bi bi-download"></i> Download PDF</a>
-                      </div>
+                    <div class="text-center py-3 text-muted">
+                      <i class="bi bi-capsule-health fs-3 mb-2 d-block text-secondary opacity-50"></i>
+                      <span class="small">No active prescriptions found.</span>
+                    </div>
                   <?php endif; ?>
                 </div>
               </div>
@@ -1147,58 +1202,7 @@ include("includes/main_header.php");
               </div>
 
               <!-- Health Progress -->
-              <div class="glass-card p-4">
-                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-heart-fill text-primary me-2"></i>Health Progress</h5>
-                
-                <div class="d-flex flex-column gap-2">
-                  <!-- Blood Group -->
-                  <div class="p-2 border rounded bg-light-subtle d-flex align-items-center justify-content-between shadow-sm">
-                    <div>
-                      <div class="fw-bold text-dark small">Blood Group</div>
-                      <div class="text-muted fs-7">Verified medical record</div>
-                    </div>
-                    <span class="badge bg-danger px-2 py-1">O Positive (O+)</span>
-                  </div>
-
-                  <!-- Height -->
-                  <div class="p-2 border rounded bg-light-subtle d-flex align-items-center justify-content-between shadow-sm">
-                    <div>
-                      <div class="fw-bold text-dark small">Height</div>
-                      <div class="text-muted fs-7">Last checked 2 weeks ago</div>
-                    </div>
-                    <span class="badge bg-primary px-2 py-1">168 cm (5'6")</span>
-                  </div>
-
-                  <!-- Weight -->
-                  <div class="p-2 border rounded bg-light-subtle d-flex align-items-center justify-content-between shadow-sm">
-                    <div>
-                      <div class="fw-bold text-dark small">Weight</div>
-                      <div class="text-muted fs-7">Weekly update</div>
-                    </div>
-                    <span class="badge bg-info text-dark px-2 py-1">62 kg</span>
-                  </div>
-
-                  <!-- BMI -->
-                  <div class="p-2 border rounded bg-light-subtle d-flex align-items-center justify-content-between shadow-sm">
-                    <div>
-                      <div class="fw-bold text-dark small">BMI</div>
-                      <div class="text-muted fs-7">Body Mass Index</div>
-                    </div>
-                    <span class="badge bg-success px-2 py-1">22.0 (Normal)</span>
-                  </div>
-
-                  <!-- Emergency Contact -->
-                  <div class="p-2 border rounded bg-light-subtle d-flex align-items-center justify-content-between shadow-sm">
-                    <div>
-                      <div class="fw-bold text-dark small">Emergency Contact</div>
-                      <div class="text-muted fs-7">Spouse &bull; Ramesh Kumar</div>
-                    </div>
-                    <span class="badge bg-dark px-2 py-1">+91 98765 43210</span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
+           
           </div> <!-- Close Dashboard Row -->
           </div> <!-- Close tab-pane-dashboard -->
 

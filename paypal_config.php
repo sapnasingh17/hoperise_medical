@@ -6,6 +6,7 @@
 // PayPal configuration 
 define('PAYPAL_ID', 'sb-kza43x33289444@business.example.com'); 
 define('PAYPAL_SANDBOX', TRUE); //TRUE or FALSE 
+define('PAYPAL_CLIENT_ID', 'sb');
  
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['SERVER_PORT'] ?? 80) == 443) ? "https://" : "http://";
 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';

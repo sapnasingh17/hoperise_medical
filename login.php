@@ -2,7 +2,7 @@
 // New Secure Logic with Prepared Statements and BCrypt:
 include_once("dbcon.php");
 
-if (isset($_SESSION['patient_id'])) {
+if (isset($_SESSION['patient_id']) || isset($_SESSION['user_id'])) {
     header("Location: index.php");
     exit();
 }
@@ -50,6 +50,7 @@ if (isset($_POST['submit'])) {
             session_regenerate_id(true);
             
             $_SESSION['patient_id'] = $row['patient_id'];
+            $_SESSION['user_id'] = $row['patient_id'];
             $_SESSION['patient_fname'] = $row['patient_fname'];
             $_SESSION['patient_lname'] = $row['patient_lname'];
             $_SESSION['patient_email'] = $row['patient_email'];

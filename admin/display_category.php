@@ -38,7 +38,7 @@
             
                                 </tr>
                             </thead>
-                            <tfoot>
+                            <!-- <tfoot>
                                 <tr>
                                     <th>Category Title</th>
                                     <th>Category description</th>
@@ -47,7 +47,7 @@
                                     <th>Delete</th>
                                
                                 </tr>
-                            </tfoot>
+                            </tfoot> -->
                             <tbody>
                                 <?php
                                 list($cat_stmt, $category_data) = db_query_prepared($conn, "SELECT * FROM hs_category");

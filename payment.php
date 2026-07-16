@@ -1,6 +1,10 @@
 <?php
 include_once("dbcon.php");
 
+// Enable debugging as per requirement
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 $appointment_id = isset($_GET['appointment_id']) ? intval($_GET['appointment_id']) : 0;
 
 // Fetch the appointment details securely
@@ -24,31 +28,117 @@ if (!$appointment) {
     exit();
 }
 
-$is_paid = ($appointment['appointment_payment_status'] == 1);
+$is_paid = ($appointment['appointment_payment_status'] == 1 || !empty($appointment['payment_method']));
 
 // Standard consultation charge if not specified
 $fee_amount = 500; 
 
 // Check if we should update payment status (for cash/UPI simulation)
 if (isset($_POST['pay_method'])) {
+    $is_ajax = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+
     // CSRF verification
     if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
-        echo "<script>alert('CSRF Verification Failed'); window.history.back();</script>";
-        exit();
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'message' => 'CSRF Verification Failed'
+            ]);
+            exit();
+        } else {
+            echo "<script>alert('CSRF Verification Failed'); window.history.back();</script>";
+            exit();
+        }
     }
 
-    $method = $_POST['pay_method'];
+    // Validate all required fields before saving
+    if (empty($_POST['pay_method'])) {
+        $msg = "Payment method is required.";
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $msg]);
+            exit();
+        } else {
+            echo "<script>alert('" . addslashes($msg) . "'); window.history.back();</script>";
+            exit();
+        }
+    }
+
+    $method = trim($_POST['pay_method']);
+    if ($method !== 'Cash on Visit' && $method !== 'UPI') {
+        $msg = "Invalid payment method selected.";
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $msg]);
+            exit();
+        } else {
+            echo "<script>alert('" . addslashes($msg) . "'); window.history.back();</script>";
+            exit();
+        }
+    }
     
-    // Set payment status to 1 for successful payment
-    $update_stmt = mysqli_prepare($conn, "UPDATE hs_appointment SET appointment_payment_status = 1 WHERE appointment_id = ?");
+    // For UPI / Cash on Visit, the status is Pending, and payment status is 0
+    $payment_status = 'Pending';
+    $db_payment_status = 0; // 0 = Pending/Unpaid
+
+    // Generate a unique appointment number
+    $appointment_number = 'HRM-' . date('Ymd') . '-' . sprintf('%05d', $appointment_id) . '-' . strtoupper(bin2hex(random_bytes(2)));
+
+    // Use prepared statements to prevent SQL injection and handle errors properly
+    $update_stmt = mysqli_prepare($conn, "UPDATE hs_appointment SET payment_method = ?, payment_status = ?, appointment_payment_status = ?, transaction_id = ? WHERE appointment_id = ?");
     if ($update_stmt) {
-        mysqli_stmt_bind_param($update_stmt, "i", $appointment_id);
+        mysqli_stmt_bind_param($update_stmt, "ssisi", $method, $payment_status, $db_payment_status, $appointment_number, $appointment_id);
         $success = mysqli_stmt_execute($update_stmt);
         mysqli_stmt_close($update_stmt);
         if ($success) {
-            echo "<script>alert('Payment Registered Successfully using " . htmlspecialchars($method) . "!'); window.location.href='payment.php?appointment_id=" . $appointment_id . "';</script>";
-            exit();
+            // Log to timeline
+            $comment = "Payment requested via " . $method . ". Status: " . $payment_status . ". Ref: " . $appointment_number;
+            $t_sql = "INSERT INTO hs_appointment_timeline (appointment_id, status_action, action_by, comments) VALUES (?, 'Payment Pending', 'patient', ?)";
+            $t_stmt = mysqli_prepare($conn, $t_sql);
+            if ($t_stmt) {
+                mysqli_stmt_bind_param($t_stmt, "is", $appointment_id, $comment);
+                mysqli_stmt_execute($t_stmt);
+                mysqli_stmt_close($t_stmt);
+            }
+            
+            // Trigger email notification
+            try {
+                include_once('email_helper.php');
+                send_appointment_email($conn, $appointment_id, 'booked');
+            } catch (Exception $e) {
+                error_log("Email notification failed: " . $e->getMessage());
+            }
+
+            if ($is_ajax) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Payment Registered Successfully using ' . $method . '!'
+                ]);
+                exit();
+            } else {
+                echo "<script>alert('Payment Registered Successfully using " . htmlspecialchars($method) . "!'); window.location.href='payment.php?appointment_id=" . $appointment_id . "';</script>";
+                exit();
+            }
         }
+    }
+
+    // Capture exact SQL/PHP error details if query fails
+    $mysql_error = mysqli_error($conn);
+    $err_details = !empty($mysql_error) ? " MySQL Error: " . $mysql_error : " Unknown error.";
+    $msg = "Failed to register payment in database." . $err_details;
+
+    if ($is_ajax) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'message' => $msg
+        ]);
+        exit();
+    } else {
+        echo "<script>alert('" . addslashes($msg) . "'); window.history.back();</script>";
+        exit();
     }
 }
 
@@ -90,17 +180,31 @@ include("includes/main_header.php");
         <div class="row justify-content-center">
           <div class="col-lg-6 col-md-8 text-center">
             <div class="glass-card p-5 shadow-lg border-0 rounded-4 my-4">
-              <div class="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle p-4 mb-4 shadow" style="width: 80px; height: 80px;">
-                <i class="bi bi-check-lg fs-1"></i>
-              </div>
-              <h2 class="fw-bold text-dark mb-2">Payment Completed!</h2>
-              <p class="text-secondary mb-4">Your consultation payment has been successfully processed and verified.</p>
+              <?php if ($appointment['appointment_payment_status'] == 1): ?>
+                <div class="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle p-4 mb-4 shadow" style="width: 80px; height: 80px;">
+                  <i class="bi bi-check-lg fs-1"></i>
+                </div>
+                <h2 class="fw-bold text-dark mb-2">Payment Completed!</h2>
+                <p class="text-secondary mb-4">Your consultation payment has been successfully processed and verified.</p>
+              <?php else: ?>
+                <div class="d-inline-flex align-items-center justify-content-center bg-warning text-white rounded-circle p-4 mb-4 shadow" style="width: 80px; height: 80px;">
+                  <i class="bi bi-clock-history fs-1"></i>
+                </div>
+                <h2 class="fw-bold text-dark mb-2">Booking Confirmed!</h2>
+                <p class="text-secondary mb-4">Your appointment is requested. Payment via <?= htmlspecialchars($appointment['payment_method'] ?? '') ?> is pending review/collection.</p>
+              <?php endif; ?>
               
               <div class="card bg-light border-0 p-4 mb-4 text-start rounded-3">
                 <div class="d-flex justify-content-between mb-2">
                   <span class="text-secondary">Patient Profile ID:</span>
                   <span class="fw-semibold text-dark">#<?= htmlspecialchars($appointment['patient_id']) ?></span>
                 </div>
+                <?php if (!empty($appointment['transaction_id'])): ?>
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="text-secondary">Appointment Number:</span>
+                  <span class="fw-semibold text-dark"><?= htmlspecialchars($appointment['transaction_id']) ?></span>
+                </div>
+                <?php endif; ?>
                 <div class="d-flex justify-content-between mb-2">
                   <span class="text-secondary">Doctor Assigned:</span>
                   <span class="fw-semibold text-dark">Dr. <?= htmlspecialchars($appointment['doctor_fname'] . " " . $appointment['doctor_lname']) ?></span>
@@ -202,7 +306,7 @@ include("includes/main_header.php");
                       <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=hoperise@upi%26pn=Hope%20Rise%20Medical%26am=<?= $fee_amount * 1.18 ?>%26cu=INR" alt="UPI QR Code" style="width: 180px; height: 180px;">
                     </div>
                     
-                    <form action="" method="post">
+                    <form action="payment.php?appointment_id=<?= $appointment_id ?>" method="post">
                       <?php echo get_csrf_input_html(); ?>
                       <input type="hidden" name="pay_method" value="UPI">
                       <button type="submit" class="btn btn-premium w-100 py-3">I Have Scanned & Paid</button>
@@ -215,7 +319,7 @@ include("includes/main_header.php");
                   <div class="py-3">
                     <p class="text-secondary small mb-4">Select this option if you prefer to settle your consultation fees directly at the clinic reception desk when you arrive.</p>
                     
-                    <form action="" method="post">
+                    <form action="payment.php?appointment_id=<?= $appointment_id ?>" method="post">
                       <?php echo get_csrf_input_html(); ?>
                       <input type="hidden" name="pay_method" value="Cash on Visit">
                       <button type="submit" class="btn btn-premium w-100 py-3"><i class="bi bi-check2-circle me-2"></i>Confirm Cash Payment at Clinic</button>
@@ -223,25 +327,11 @@ include("includes/main_header.php");
                   </div>
                 </div>
 
-                <!-- PayPal Legacy Pane -->
+                <!-- PayPal SDK Pane -->
                 <div class="tab-pane fade" id="paypal-pane" role="tabpanel" aria-labelledby="paypal-tab">
                   <div class="py-3">
-                    <p class="text-secondary small mb-4">You will be redirected securely to the PayPal sandbox portal to authorize the transaction.</p>
-                    
-                    <!-- Legacy PayPal Form -->
-                    <form action="<?php echo PAYPAL_URL; ?>" method="post" target="_blank">
-                      <input type="hidden" name="business" value="<?php echo PAYPAL_ID; ?>">
-                      <input type="hidden" name="cmd" value="_xclick">
-                      <input type="hidden" name="item_name" value="Doctor Consultation #<?= $appointment['doctor_id']; ?>">
-                      <input type="hidden" name="item_number" value="<?= $appointment['appointment_id']; ?>">
-                      <input type="hidden" name="amount" value="<?= number_format(($fee_amount * 1.18) / 80, 2); // Convert to mock USD ?>">
-                      <input type="hidden" name="id" value="<?= $appointment['patient_id']; ?>">
-                      <input type="hidden" name="currency_code" value="USD">
-                      <input type='hidden' name='cancel_return' value='<?= PAYPAL_CANCEL_URL . "?appointment_id=" . $appointment['appointment_id']; ?>'>
-                      <input type='hidden' name='return' value='<?= PAYPAL_RETURN_URL . "?appointment_id=" . $appointment['appointment_id']; ?>'>
-                      
-                      <button type="submit" class="btn btn-premium w-100 py-3"><i class="bi bi-paypal me-2"></i>Proceed with PayPal Redirect</button>
-                    </form>
+                    <p class="text-secondary small mb-4">Complete your payment securely using PayPal.</p>
+                    <div id="paypal-button-container"></div>
                   </div>
                 </div>
               </div>
@@ -270,6 +360,86 @@ include("includes/main_header.php");
 
 <!-- JS imports -->
 <?php include("includes/js.php"); ?>
+
+<!-- PayPal JS SDK -->
+<script src="https://www.paypal.com/sdk/js?client-id=<?php echo PAYPAL_CLIENT_ID; ?>&currency=USD"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('paypal-button-container')) {
+        paypal.Buttons({
+            createOrder: function(data, actions) {
+                return actions.order.create({
+                    purchase_units: [{
+                        amount: {
+                            value: '<?php echo number_format(($fee_amount * 1.18) / 80, 2); ?>'
+                        }
+                    }]
+                });
+            },
+            onApprove: function(data, actions) {
+                return actions.order.capture().then(function(details) {
+                    window.location.href = 'paypal_success.php?appointment_id=<?php echo $appointment_id; ?>&transaction_id=' + details.id;
+                });
+            },
+            onError: function(err) {
+                console.error('PayPal SDK error:', err);
+                showToast('An error occurred during the PayPal transaction.', 'error', 'PayPal Error');
+            }
+        }).render('#paypal-button-container');
+    }
+
+    // Intercept UPI and Cash on Visit forms for AJAX submission
+    const upiForm = document.querySelector('#upi-pane form');
+    const cashForm = document.querySelector('#cash-pane form');
+
+    if (upiForm) {
+        upiForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitPaymentAJAX(upiForm);
+        });
+    }
+
+    if (cashForm) {
+        cashForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitPaymentAJAX(cashForm);
+        });
+    }
+
+    function submitPaymentAJAX(form) {
+        const formData = new FormData(form);
+        const actionUrl = form.getAttribute('action') || window.location.href;
+
+        fetch(actionUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('HTTP status ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success', 'Payment Registered');
+                setTimeout(() => {
+                    window.location.href = 'payment.php?appointment_id=<?php echo $appointment_id; ?>';
+                }, 1000);
+            } else {
+                showToast(data.message || 'Payment registration failed.', 'error', 'Payment Error');
+            }
+        })
+        .catch(err => {
+            console.error('AJAX Error:', err);
+            showToast('A network/server error occurred during payment submission.', 'error', 'Connection Error');
+        });
+    }
+});
+</script>
 
 <!-- Premium Toast Container -->
 <div class="toast-container position-fixed bottom-0 end-0 p-4" style="z-index: 1060;">

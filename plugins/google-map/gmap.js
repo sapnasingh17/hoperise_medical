@@ -94,7 +94,9 @@ function initialize() {
         }
 
     }
-    map = new google.maps.Map(document.getElementById('map'), mapOptions);
+    var mapDiv = document.getElementById('map');
+    if (!mapDiv) return;
+    map = new google.maps.Map(mapDiv, mapOptions);
     // SET THE MAP TYPE
     var mapType = new google.maps.StyledMapType(style, {name:"Grayscale"});
     map.mapTypes.set('grey', mapType);
