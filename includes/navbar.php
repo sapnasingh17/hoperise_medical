@@ -19,7 +19,7 @@
           <a class="nav-link px-3 <?= (basename($_SERVER['PHP_SELF']) == 'service.php') ? 'active fw-semibold text-primary' : '' ?>" href="service.php">Service</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link px-3 <?= (basename($_SERVER['PHP_SELF']) == 'team.php') ? 'active fw-semibold text-primary' : '' ?>" href="team.php">Team</a>
+          <a class="nav-link px-3 <?= (basename($_SERVER['PHP_SELF']) == 'team.php') ? 'active fw-semibold text-primary' : '' ?>" href="team.php">Doctors</a>
         </li>
         <li class="nav-item">
           <a class="nav-link px-3 <?= (basename($_SERVER['PHP_SELF']) == 'add_appointment.php') ? 'active fw-semibold text-primary' : '' ?>" href="add_appointment.php">Appointment</a>
@@ -32,7 +32,7 @@
             <a class="nav-link px-3 <?= (basename($_SERVER['PHP_SELF']) == 'feedback.php') ? 'active fw-semibold text-primary' : '' ?>" href="feedback.php">Feedback</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link px-3 <?= (basename($_SERVER['PHP_SELF']) == 'my_appointment.php') ? 'active fw-semibold text-primary' : '' ?>" href="my_appointment.php">Dashboard</a>
+            <a class="nav-link px-3 <?= (basename($_SERVER['PHP_SELF']) == 'my_appointment.php') ? 'active fw-semibold text-primary' : '' ?>" href="my_appointment.php">Profile</a>
           </li>
           <li class="nav-item ms-lg-2">
             <a class="btn btn-premium btn-sm" href="logout.php">Logout</a>
