@@ -155,6 +155,11 @@ if ($role_stmt) {
                 <span class="nav-label">Reports & Analytics</span>
             </a>
         </li>
+        <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'manage_payments.php') ? 'active' : ''; ?>">
+            <a href="manage_payments.php"><i class="sidebar-item-icon fa fa-credit-card"></i>
+                <span class="nav-label">Payments</span>
+            </a>
+        </li>
     <?php } ?>
 </ul>
 

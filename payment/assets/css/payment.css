@@ -1,0 +1,296 @@
+:root {
+  --primary-color: #0d6efd;
+  --primary-hover: #0b5ed7;
+  --primary-light: #f0f7ff;
+  --primary-accent: #3b82f6;
+  --success-color: #198754;
+  --warning-color: #ffc107;
+  --warning-dark: #856404;
+  --text-dark: #212529;
+  --text-secondary: #495057;
+  --text-muted: #6c757d;
+  --border-color: #dee2e6;
+  --light-bg: #f8f9fa;
+  --card-bg: #ffffff;
+  --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+body {
+  background-color: var(--light-bg);
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text-secondary);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.payment-wrapper {
+  background: radial-gradient(circle at 0% 0%, rgba(13, 110, 253, 0.02) 0%, transparent 50%),
+              radial-gradient(circle at 100% 100%, rgba(13, 110, 253, 0.02) 0%, transparent 50%);
+}
+
+/* Navbar Branding */
+.navbar-logo {
+  height: 50px;
+  width: auto;
+  object-fit: contain;
+}
+
+.brand-name {
+  color: var(--text-dark) !important;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.back-btn {
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.back-btn:hover {
+  transform: translateX(-2px);
+}
+
+/* Hero Banner Section */
+.payment-hero {
+  background: linear-gradient(135deg, #eef2f7 0%, #e0eafd 100%);
+  border-bottom: 1px solid rgba(13, 110, 253, 0.08);
+  padding: 3rem 1rem;
+  margin-bottom: 2.5rem;
+}
+
+.page-heading {
+  font-size: 2.25rem;
+  letter-spacing: -0.75px;
+  color: var(--text-dark);
+  font-weight: 800 !important;
+}
+
+.page-subtitle {
+  font-size: 1.05rem;
+  max-width: 650px;
+  margin: 0 auto;
+}
+
+/* Main Cards */
+.payment-card {
+  background: var(--card-bg);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 20px;
+  padding: 40px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04), 0 1px 8px rgba(0, 0, 0, 0.02);
+  transition: var(--transition);
+}
+
+.payment-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+}
+
+/* Consultation Invoice Inner CSS */
+/* Consultation Invoice Inner CSS */
+.invoice-header-premium {
+  border-bottom: 2px solid var(--border-color);
+}
+
+.invoice-hospital-logo {
+  height: 38px;
+  width: auto;
+  object-fit: contain;
+}
+
+.invoice-meta-item {
+  font-size: 0.85rem;
+}
+
+.invoice-details-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.invoice-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.08) !important;
+}
+
+.invoice-detail-row:last-of-type {
+  border-bottom: none !important;
+}
+
+.detail-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.detail-value {
+  color: var(--text-dark);
+  font-weight: 600;
+  text-align: right;
+}
+
+/* Pricing Table */
+.pricing-table-premium {
+  border-top: 2px solid var(--border-color);
+}
+
+.pricing-row-premium {
+  font-size: 0.95rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.total-payable-row {
+  background-color: #f1f7ff;
+  border: 1px solid rgba(13, 110, 253, 0.15);
+  border-radius: 8px;
+}
+
+/* Payment Method Selection Cards */
+.method-card {
+  background-color: #ffffff;
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px 16px;
+  cursor: pointer;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  user-select: none;
+}
+
+.method-card:hover {
+  border-color: var(--primary-accent);
+  color: var(--primary-color);
+  background-color: var(--primary-light);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.04);
+}
+
+.method-icon {
+  color: var(--primary-accent);
+  transition: var(--transition);
+}
+
+.method-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.method-card.selected {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(13, 110, 253, 0.3) !important;
+}
+
+.method-card.selected .method-icon {
+  color: #ffffff !important;
+}
+
+/* Payment details box */
+.payment-details-container {
+  border: 1px solid var(--border-color);
+  background-color: #fdfdfd !important;
+}
+
+.method-details {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.qr-container {
+  background: #ffffff;
+  border: 1px dashed var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  max-width: 200px;
+  margin: 0 auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.qr-code-img {
+  max-height: 160px;
+  object-fit: contain;
+}
+
+.small-list {
+  padding-left: 1.2rem;
+  line-height: 1.6;
+}
+
+/* Alerts custom styling */
+.alert-primary-subtle {
+  background-color: #ebf3fe;
+  border: 1px solid #cce0ff;
+  color: #084298;
+}
+
+.alert-warning-subtle {
+  background-color: #fff3cd;
+  border: 1px solid #ffecb5;
+  color: #664d03;
+}
+
+.text-warning-dark {
+  color: #664d03;
+}
+
+/* Primary Payment CTA Button */
+.btn-primary-payment {
+  background-color: var(--primary-color);
+  border: none;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.05rem;
+  border-radius: 50px;
+  padding: 16px 28px;
+  transition: var(--transition);
+}
+
+.btn-primary-payment:hover, .btn-primary-payment:focus {
+  background-color: var(--primary-hover);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(13, 110, 253, 0.3);
+}
+
+.btn-primary-payment:disabled {
+  background-color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* Toast popup styling */
+.custom-toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  border-left: 5px solid var(--primary-color);
+  transform: translateX(120%);
+  transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.custom-toast.show {
+  transform: translateX(0);
+}

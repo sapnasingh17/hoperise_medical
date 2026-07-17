@@ -102,7 +102,7 @@ if (isset($_POST['submit'])) {
             send_appointment_email($conn, $new_app_id, 'booked');
 
             $_SESSION['toast_success'] = 'Appointment Requested Successfully!';
-            header("Location: payment.php?appointment_id=" . $new_app_id);
+            header("Location: payment/payment.php?appointment_id=" . $new_app_id);
             exit();
         }
     }

@@ -39,13 +39,15 @@ if (!$invoice) {
     exit();
 }
 
-// Calculate pricing breakdown (Assuming a total base amount of ₹500 plus 18% GST)
-$base_amount = 500;
-$gst_rate = 0.18; // 18%
-$gst_amount = $base_amount * $gst_rate;
-$cgst_amount = $gst_amount / 2; // 9%
-$sgst_amount = $gst_amount / 2; // 9%
-$total_amount = $base_amount + $gst_amount;
+// Calculate pricing breakdown dynamically based on the stored amount
+$total_amount = floatval($invoice['amount'] ?? 590.00);
+if ($total_amount <= 0) {
+    $total_amount = 590.00;
+}
+$base_amount = round($total_amount / 1.18, 2);
+$gst_amount = round($total_amount - $base_amount, 2);
+$cgst_amount = round($gst_amount / 2, 2);
+$sgst_amount = round($gst_amount / 2, 2);
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -33,7 +33,7 @@ if(isset($_POST['submit'])) {
             include_once('email_helper.php');
             send_appointment_email($conn, $new_app_id, 'booked');
 
-            echo "<script>alert('Appointment Requested Successfully! Redirecting to payment...'); window.location.href='payment.php?appointment_id=" . $new_app_id . "';</script>";
+            echo "<script>alert('Appointment Requested Successfully!'); window.location.href='payment/payment.php?appointment_id=" . $new_app_id . "';</script>";
             exit();
         }
     }

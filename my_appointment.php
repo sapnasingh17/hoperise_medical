@@ -330,7 +330,7 @@ list($stats_stmt, $stats_result) = db_query_prepared($conn, "SELECT
     COUNT(*) as total,
     SUM(CASE WHEN appointment_status = 'Accept' OR appointment_status = 'Confirmed' OR appointment_status = 'Completed' THEN 1 ELSE 0 END) as confirmed,
     SUM(CASE WHEN appointment_status = 'Pending' OR appointment_status = 'pending' OR appointment_status = '' OR appointment_status IS NULL THEN 1 ELSE 0 END) as pending,
-    SUM(CASE WHEN appointment_payment_status = 1 THEN 500 ELSE 0 END) as paid
+    SUM(CASE WHEN appointment_payment_status = 1 THEN COALESCE(amount, 590) ELSE 0 END) as paid
     FROM hs_appointment WHERE patient_id = ?", [$patient_id], 'i');
 
 if ($stats_result && $row_stats = mysqli_fetch_assoc($stats_result)) {
@@ -847,7 +847,7 @@ include("includes/main_header.php");
                                   </button>
 
                                   <?php if ($status == 'Accept' && $appt['appointment_payment_status'] == 0): ?>
-                                    <a href="payment.php?appointment_id=<?= $appt['appointment_id']; ?>" class="btn btn-premium btn-sm py-1 px-3">Pay</a>
+                                    <a href="payment/payment.php?appointment_id=<?= $appt['appointment_id']; ?>" class="btn btn-premium btn-sm py-1 px-3">Pay</a>
                                   <?php elseif ($status == 'Accept' && $appt['appointment_payment_status'] == 1): ?>
                                     <div class="d-flex align-items-center gap-2">
                                       <span class="text-success fw-bold small"><i class="bi bi-check-circle-fill me-1"></i>Paid</span>
@@ -1013,6 +1013,7 @@ include("includes/main_header.php");
                       ];
                   }
 
+
                   // 3. Check for successful payments
                   if ($paid_amount > 0) {
                       $notifications[] = [
@@ -1155,6 +1156,7 @@ include("includes/main_header.php");
                 </div>
               </div>
 
+
               <!-- Recent Payments -->
               <div class="glass-card p-4 mb-4">
                 <h5 class="fw-bold text-dark mb-3"><i class="bi bi-credit-card-fill text-primary me-2"></i>Recent Payments</h5>
@@ -1166,7 +1168,7 @@ include("includes/main_header.php");
                           $payments[] = [
                               'id' => $row['appointment_id'],
                               'date' => date('M d, Y', strtotime($row['appointment_date'])),
-                              'amount' => 500
+                              'amount' => floatval($row['amount'] ?? 590.00)
                           ];
                       }
                   }
@@ -1176,7 +1178,7 @@ include("includes/main_header.php");
                       <div class="p-2 border rounded bg-white d-flex align-items-center justify-content-between shadow-sm">
                         <div>
                           <div class="fw-bold text-dark small">Invoice #INV-10<?= $pay['id'] ?></div>
-                          <div class="text-muted fs-7">Paid on <?= $pay['date'] ?> &bull; ₹<?= $pay['amount'] ?></div>
+                          <div class="text-muted fs-7">Paid on <?= $pay['date'] ?> &bull; ₹<?= number_format($pay['amount'], 2) ?></div>
                         </div>
                         <a href="invoice.php?appointment_id=<?= $pay['id'] ?>" target="_blank" class="btn btn-sm btn-outline-success px-2 py-1"><i class="bi bi-download"></i> Download</a>
                       </div>
