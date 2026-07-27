@@ -1,4 +1,4 @@
-.env
+
 vendor/
 smtp_errors.log
 error.log
