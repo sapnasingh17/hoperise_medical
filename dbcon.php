@@ -56,6 +56,7 @@ if (!defined('GEMINI_API_KEY')) {
 }
 
 // SMTP Mail Configuration
+require_once __DIR__ . '/smtp_config.php';
 if (!defined('SMTP_HOST')) {
     define('SMTP_HOST', getenv('SMTP_HOST') ?: 'smtp.gmail.com');
 }

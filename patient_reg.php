@@ -153,11 +153,14 @@ if(isset($_POST['submit']))
             </table>
         </body>
         </html>';
+        // Retrieve company/admin email and name dynamically from global settings
+        $company_email = isset($GLOBALS['company_settings']['email']) && !empty($GLOBALS['company_settings']['email']) ? $GLOBALS['company_settings']['email'] : SMTP_FROM_EMAIL;
+        $company_name = isset($GLOBALS['company_settings']['hospital_name']) && !empty($GLOBALS['company_settings']['hospital_name']) ? $GLOBALS['company_settings']['hospital_name'] : SMTP_FROM_NAME;
+
+        include_once("smtp_helper.php");
+        send_smtp_email($to, $subject, $message, $company_email, $company_name);
         
-        include_once("email_helper.php");
-        send_custom_email($to, $subject, $message, 'sapnnna988@gmail.com', 'Hope Rise Medical', $conn);
-        
-        $_SESSION['login_success'] = "Registration successful! Welcome to Hope Rise Medical. You can now log in.";
+        $_SESSION['login_success'] = "Registration successful! Welcome to " . $company_name . ". You can now log in.";
         header("Location: login.php");
         exit();
     }

@@ -1,0 +1,7 @@
+.env
+vendor/
+smtp_errors.log
+error.log
+mock_smtp.log
+received_emails.log
+*.log

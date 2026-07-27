@@ -8,11 +8,48 @@ if(isset($_POST['submit']))
         exit();
     }
 
-    $hs_name=$_POST['hs_name'];
-    $hs_email=$_POST['hs_email'];
-    $hs_phone=$_POST['hs_phone'];
-    $hs_message=$_POST['hs_message'];
+    // Server-side validation & sanitization
+    $raw_name    = isset($_POST['hs_name']) ? trim($_POST['hs_name']) : '';
+    $raw_email   = isset($_POST['hs_email']) ? trim($_POST['hs_email']) : '';
+    $raw_phone   = isset($_POST['hs_phone']) ? trim($_POST['hs_phone']) : '';
+    $raw_message = isset($_POST['hs_message']) ? trim($_POST['hs_message']) : '';
+
+    // Header Injection Prevention: Strip carriage returns and line feeds
+    $hs_name    = str_replace(["\r", "\n"], '', $raw_name);
+    $hs_email   = str_replace(["\r", "\n"], '', $raw_email);
+    $hs_phone   = str_replace(["\r", "\n"], '', $raw_phone);
+    $hs_message = str_replace("\0", '', $raw_message); // Strip null bytes
+
+    $errors = [];
+    if (empty($hs_name)) {
+        $errors[] = "Name is required.";
+    } elseif (!preg_match("/^[a-zA-Z\s]{1,100}$/", $hs_name)) {
+        $errors[] = "Name must contain only letters and spaces (1-100 characters).";
+    }
+
+    if (empty($hs_email)) {
+        $errors[] = "Email address is required.";
+    } elseif (!filter_var($hs_email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = "Please provide a valid email address.";
+    }
+
+    if (empty($hs_phone)) {
+        $errors[] = "Phone number is required.";
+    } elseif (!preg_match("/^[0-9\+\-\s]{10,15}$/", $hs_phone)) {
+        $errors[] = "Phone number must be between 10 and 15 digits.";
+    }
+
+    if (empty($hs_message)) {
+        $errors[] = "Message is required.";
+    }
+
+    if (!empty($errors)) {
+        $error_str = implode("\\n", array_map('addslashes', $errors));
+        echo "<script>alert('Validation Failed:\\n" . $error_str . "'); window.history.back();</script>";
+        exit();
+    }
      
+    // Prepared Statement to prevent SQL Injection
     $stmt = mysqli_prepare($conn, "INSERT INTO hs_contact(hs_name, hs_email, hs_phone, hs_message) VALUES (?, ?, ?, ?)");
     $query = false;
     if ($stmt) {
@@ -20,13 +57,15 @@ if(isset($_POST['submit']))
         $query = mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
     }
+
     if($query)
     {
-        include_once("email_helper.php");
+        include_once("smtp_helper.php");
         
         $to = $hs_email;
         $subject = "Hope Rise Medical Contact Request";
         
+        // HTML Email Template with Output Escaping for XSS Prevention
         $message = '<html xmlns="http://www.w3.org/1999/xhtml">
         <body style="background-color: #f8fafc; font-family: sans-serif; padding: 40px;">
             <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow: hidden;">
@@ -34,26 +73,26 @@ if(isset($_POST['submit']))
                     <h2 style="margin:0;">Contact Request Received</h2>
                 </div>
                 <div style="padding: 30px; color: #334155; line-height: 1.6;">
-                    <p>Dear ' . htmlspecialchars($hs_name) . ',</p>
+                    <p>Dear ' . htmlspecialchars($hs_name, ENT_QUOTES, 'UTF-8') . ',</p>
                     <p>Thank you for reaching out to Hope Rise Medical. We have received your inquiry and our support team will contact you shortly.</p>
                     <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
                     <h3 style="margin-top: 0; color: #1e293b;">Inquiry Details:</h3>
                     <table style="width: 100%; border-collapse: collapse;">
                         <tr>
                             <td style="padding: 6px 0; font-weight: bold; color: #64748b; width: 100px;">Name:</td>
-                            <td style="padding: 6px 0; color: #0f172a;">' . htmlspecialchars($hs_name) . '</td>
+                            <td style="padding: 6px 0; color: #0f172a;">' . htmlspecialchars($hs_name, ENT_QUOTES, 'UTF-8') . '</td>
                         </tr>
                         <tr>
                             <td style="padding: 6px 0; font-weight: bold; color: #64748b;">Email:</td>
-                            <td style="padding: 6px 0; color: #0f172a;">' . htmlspecialchars($hs_email) . '</td>
+                            <td style="padding: 6px 0; color: #0f172a;">' . htmlspecialchars($hs_email, ENT_QUOTES, 'UTF-8') . '</td>
                         </tr>
                         <tr>
                             <td style="padding: 6px 0; font-weight: bold; color: #64748b;">Phone:</td>
-                            <td style="padding: 6px 0; color: #0f172a;">' . htmlspecialchars($hs_phone) . '</td>
+                            <td style="padding: 6px 0; color: #0f172a;">' . htmlspecialchars($hs_phone, ENT_QUOTES, 'UTF-8') . '</td>
                         </tr>
                         <tr>
                             <td style="padding: 6px 0; font-weight: bold; color: #64748b; vertical-align: top;">Message:</td>
-                            <td style="padding: 6px 0; color: #0f172a; white-space: pre-line;">' . htmlspecialchars($hs_message) . '</td>
+                            <td style="padding: 6px 0; color: #0f172a; white-space: pre-line;">' . htmlspecialchars($hs_message, ENT_QUOTES, 'UTF-8') . '</td>
                         </tr>
                     </table>
                 </div>
@@ -64,18 +103,40 @@ if(isset($_POST['submit']))
         </body>
         </html>';
         
-        // Send email to client
-        send_custom_email($to, $subject, $message, 'sapnnna988@gmail.com', 'Hope Rise Medical', $conn);
-        
+        // Retrieve company/admin email and name dynamically
+        $company_email = isset($GLOBALS['company_settings']['email']) && !empty($GLOBALS['company_settings']['email']) ? $GLOBALS['company_settings']['email'] : (defined('SMTP_FROM_EMAIL') ? SMTP_FROM_EMAIL : 'sapnnna988@gmail.com');
+        $company_name = isset($GLOBALS['company_settings']['hospital_name']) && !empty($GLOBALS['company_settings']['hospital_name']) ? $GLOBALS['company_settings']['hospital_name'] : (defined('SMTP_FROM_NAME') ? SMTP_FROM_NAME : 'Hope Rise Medical');
+
+        $client_error = '';
+        $admin_error = '';
+
+        // Send auto-reply to client
+        $client_sent = send_smtp_email($to, $subject, $message, $company_email, $company_name, $client_error);
+
         // Send notification to admin
-        send_custom_email('sapnnna988@gmail.com', "New Contact Submission: " . $hs_name, $message, 'sapnnna988@gmail.com', 'Hope Rise Medical Support', $conn);
-        
-        echo "<script>alert('Message Sent Successfully!'); window.location.href='contact.php';</script>";
+        $admin_sent = send_smtp_email($company_email, "New Contact Submission: " . $hs_name, $message, $company_email, $company_name . ' Support', $admin_error);
+
+        // Log any SMTP failures for debugging
+        if (!$client_sent) {
+            error_log("HS Contact Error: failed to send auto-reply to {$to}: {$client_error}");
+        }
+        if (!$admin_sent) {
+            error_log("HS Contact Error: failed to send admin notification to {$company_email}: {$admin_error}");
+        }
+
+        // Output user-friendly response messages
+        if ($client_sent || $admin_sent) {
+            echo "<script>alert('✅ Message sent successfully.'); window.location.href='contact.php';</script>";
+        } else {
+            $reason = !empty($client_error) ? $client_error : (!empty($admin_error) ? $admin_error : 'SMTP Authentication Error');
+            echo "<script>alert('❌ Failed to send email: " . addslashes($reason) . "'); window.location.href='contact.php';</script>";
+        }
         exit();
     }
     else
     {
-        echo "<script>alert('Failed to send message.');</script>";
+        echo "<script>alert('Failed to save message to database.'); window.history.back();</script>";
+        exit();
     }
 }
 
@@ -128,7 +189,7 @@ include('includes/main_header.php');
                 <div class="bg-primary-light text-primary rounded-circle p-3"><i class="bi bi-envelope-fill fs-4"></i></div>
                 <div>
                   <h5 class="fw-bold text-dark mb-1">Support Email</h5>
-                  <p class="text-secondary small mb-0">support@hoperise.com</p>
+                  <p class="text-secondary small mb-0">sskn057@gmail.com</p>
                 </div>
               </div>
             </div>

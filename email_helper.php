@@ -161,13 +161,17 @@ if (!function_exists('send_appointment_email')) {
         </body>
         </html>';
 
+        // Retrieve company/admin email and name dynamically from global settings
+        $company_email = isset($GLOBALS['company_settings']['email']) && !empty($GLOBALS['company_settings']['email']) ? $GLOBALS['company_settings']['email'] : 'notifications@hoperise.com';
+        $company_name = isset($GLOBALS['company_settings']['hospital_name']) && !empty($GLOBALS['company_settings']['hospital_name']) ? $GLOBALS['company_settings']['hospital_name'] : 'Hope Rise Medical';
+
         // Try to send email to patient
-        $sent_patient = send_custom_email($patient_email, $subject, $message, 'notifications@hoperise.com', 'Hope Rise Medical', $conn);
+        $sent_patient = send_custom_email($patient_email, $subject, $message, $company_email, $company_name, $conn);
 
         // Try to send email to doctor as well if doctor_email is valid
         if (!empty($doctor_email)) {
             $doc_subject = "Appointment Update Notification - " . $doctor_name;
-            send_custom_email($doctor_email, $doc_subject, $message, 'notifications@hoperise.com', 'Hope Rise Medical', $conn);
+            send_custom_email($doctor_email, $doc_subject, $message, $company_email, $company_name, $conn);
         }
 
         return $sent_patient;
@@ -176,18 +180,19 @@ if (!function_exists('send_appointment_email')) {
 
 if (!function_exists('send_custom_email')) {
     function send_custom_email($to, $subject, $message, $from_email = 'notifications@hoperise.com', $from_name = 'Hope Rise Medical', $conn = null) {
-        $smtp_host = defined('SMTP_HOST') ? SMTP_HOST : (getenv('SMTP_HOST') ?: '');
+        $smtp_host = defined('SMTP_HOST') ? SMTP_HOST : (getenv('SMTP_HOST') ?: 'smtp.gmail.com');
         $smtp_port = defined('SMTP_PORT') ? intval(SMTP_PORT) : intval(getenv('SMTP_PORT') ?: 587);
         $smtp_user = defined('SMTP_USER') ? SMTP_USER : (getenv('SMTP_USER') ?: '');
         $smtp_pass = defined('SMTP_PASS') ? SMTP_PASS : (getenv('SMTP_PASS') ?: '');
         $smtp_secure = defined('SMTP_SECURE') ? SMTP_SECURE : (getenv('SMTP_SECURE') ?: 'tls');
-        $smtp_debug = defined('SMTP_DEBUG_MODE') ? SMTP_DEBUG_MODE : false;
 
-        $mail = new PHPMailer(true);
         $success = false;
 
-        try {
-            if (!empty($smtp_host)) {
+        $smtp_configured = !empty($smtp_pass) && $smtp_pass !== 'YOUR_GMAIL_APP_PASSWORD_HERE' && $smtp_pass !== 'your16charapppassword';
+
+        if ($smtp_configured) {
+            try {
+                $mail = new PHPMailer(true);
                 $mail->isSMTP();
                 $mail->Host       = $smtp_host;
                 $mail->SMTPAuth   = !empty($smtp_user);
@@ -204,56 +209,98 @@ if (!function_exists('send_custom_email')) {
                     $mail->SMTPAutoTLS = false;
                 }
 
-                if ($smtp_debug) {
-                    $mail->SMTPDebug = SMTP::DEBUG_SERVER;
-                    $mail->Debugoutput = function($str, $level) {
-                        error_log("SMTP DEBUG: $str");
-                        if (defined('SMTP_DEBUG_DISPLAY') && SMTP_DEBUG_DISPLAY) {
-                            echo htmlspecialchars($str) . "<br>\n";
-                        }
-                    };
+                $mail->SMTPDebug = SMTP::DEBUG_OFF;
+                $mail->Timeout = 10;
+
+                $sender_email = !empty($smtp_user) ? $smtp_user : $from_email;
+                $mail->setFrom($sender_email, $from_name);
+                $mail->addAddress($to);
+                $mail->addReplyTo($from_email, $from_name);
+
+                $mail->isHTML(true);
+                $mail->Subject = $subject;
+                $mail->Body    = $message;
+                $mail->AltBody = strip_tags($message);
+                $mail->CharSet = 'UTF-8';
+
+                $success = $mail->send();
+            } catch (\Exception $e) {
+                error_log("PHPMailer SMTP Exception: " . $e->getMessage());
+                $success = false;
+            }
+        }
+
+        // Secondary Attempt: Local SMTP server (e.g. 127.0.0.1:1025)
+        if (!$success) {
+            try {
+                $socket = @fsockopen('127.0.0.1', 1025, $errno, $errstr, 2);
+                if ($socket) {
+                    fclose($socket);
+                    $local_mail = new PHPMailer(true);
+                    $local_mail->isSMTP();
+                    $local_mail->Host       = '127.0.0.1';
+                    $local_mail->Port       = 1025;
+                    $local_mail->SMTPAuth   = false;
+                    $local_mail->SMTPSecure = '';
+                    $local_mail->SMTPAutoTLS = false;
+                    $local_mail->Timeout    = 5;
+
+                    $local_mail->setFrom($from_email, $from_name);
+                    $local_mail->addAddress($to);
+                    $local_mail->addReplyTo($from_email, $from_name);
+
+                    $local_mail->isHTML(true);
+                    $local_mail->Subject = $subject;
+                    $local_mail->Body    = $message;
+                    $local_mail->AltBody = strip_tags($message);
+                    $local_mail->CharSet = 'UTF-8';
+
+                    $success = $local_mail->send();
                 }
-            } else {
-                $mail->isMail();
+            } catch (\Exception $local_ex) {
+                error_log("Local SMTP Exception: " . $local_ex->getMessage());
             }
+        }
 
-            // Recipients
-            $sender_email = (!empty($smtp_user) && strpos($smtp_host, 'gmail.com') !== false) ? $smtp_user : $from_email;
-            $mail->setFrom($sender_email, $from_name);
-            $mail->addAddress($to);
-            $mail->addReplyTo($from_email, $from_name);
+        // Fallback: PHPMailer native mail driver or standard mail()
+        if (!$success) {
+            try {
+                $fallback_mail = new PHPMailer(true);
+                $fallback_mail->isMail();
+                $fallback_mail->setFrom($from_email, $from_name);
+                $fallback_mail->addAddress($to);
+                $fallback_mail->addReplyTo($from_email, $from_name);
+                $fallback_mail->isHTML(true);
+                $fallback_mail->Subject = $subject;
+                $fallback_mail->Body    = $message;
+                $fallback_mail->AltBody = strip_tags($message);
+                $fallback_mail->CharSet = 'UTF-8';
 
-            // Content
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body    = $message;
-            $mail->AltBody = strip_tags($message);
-            $mail->CharSet = 'UTF-8';
+                $success = $fallback_mail->send();
+            } catch (\Exception $fallback_ex) {
+                $headers  = "MIME-Version: 1.0" . "\r\n";
+                $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+                $headers .= 'From: ' . $from_name . ' <' . $from_email . '>' . "\r\n";
+                $headers .= 'Reply-To: ' . $from_email . "\r\n";
+                $headers .= 'X-Mailer: PHP/' . phpversion();
 
-            $success = $mail->send();
-        } catch (Exception $e) {
-            error_log("PHPMailer Exception: " . $e->getMessage());
-            if ($smtp_debug || (defined('SMTP_DEBUG_DISPLAY') && SMTP_DEBUG_DISPLAY)) {
-                echo "PHPMailer Error: " . htmlspecialchars($e->getMessage()) . "<br>\n";
+                $success = @mail($to, $subject, $message, $headers);
             }
-            $success = false;
-        } catch (\Exception $e) {
-            error_log("General Exception: " . $e->getMessage());
-            if ($smtp_debug || (defined('SMTP_DEBUG_DISPLAY') && SMTP_DEBUG_DISPLAY)) {
-                echo "General Error: " . htmlspecialchars($e->getMessage()) . "<br>\n";
-            }
-            $success = false;
         }
 
         // Log to database if connection is provided
         if ($conn) {
-            $log_status = $success ? 'sent' : 'failed';
-            $log_sql = "INSERT INTO hs_email_log (recipient_email, subject, message, status) VALUES (?, ?, ?, ?)";
-            $log_stmt = mysqli_prepare($conn, $log_sql);
-            if ($log_stmt) {
-                mysqli_stmt_bind_param($log_stmt, "ssss", $to, $subject, $message, $log_status);
-                mysqli_stmt_execute($log_stmt);
-                mysqli_stmt_close($log_stmt);
+            try {
+                $log_status = $success ? 'sent' : 'failed';
+                $log_sql = "INSERT INTO hs_email_log (recipient_email, subject, message, status) VALUES (?, ?, ?, ?)";
+                $log_stmt = mysqli_prepare($conn, $log_sql);
+                if ($log_stmt) {
+                    mysqli_stmt_bind_param($log_stmt, "ssss", $to, $subject, $message, $log_status);
+                    mysqli_stmt_execute($log_stmt);
+                    mysqli_stmt_close($log_stmt);
+                }
+            } catch (\Exception $e) {
+                error_log("Database email log failed: " . $e->getMessage());
             }
         }
 
