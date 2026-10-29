@@ -31,24 +31,12 @@ if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > 
     session_destroy();
 }
 $_SESSION['LAST_ACTIVITY'] = time();
-// Aiven MySQL Database credentials or Local fallback
-$is_production = !empty(getenv('DB_HOST'));
-
-if ($is_production) {
-    define('DB_HOST', getenv('DB_HOST'));
-    define('DB_USER', getenv('DB_USER'));
-    define('DB_PASS', getenv('DB_PASS'));
-    define('DB_NAME', getenv('DB_NAME') ?: 'defaultdb');
-    define('DB_PORT', getenv('DB_PORT') ?: 25433);
-    define('DB_SSL_CA', __DIR__ . '/ca.pem');
-} else {
-    define('DB_HOST', 'localhost');
-    define('DB_USER', 'admin');
-    define('DB_PASS', 'Inextrix@1234');
-    define('DB_NAME', 'hoperise');
-    define('DB_PORT', 3306);
-}
-
+// Database Configuration (Environment variable support with local defaults)
+define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+define('DB_USER', getenv('DB_USER') ?: 'admin');
+define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : 'Inextrix@1234');
+define('DB_NAME', getenv('DB_NAME') ?: 'hoperise');
+define('DB_PORT', (int)(getenv('DB_PORT') ?: 3306));
 
 // Gemini API Configuration
 if (!defined('GEMINI_API_KEY')) {
@@ -79,40 +67,11 @@ if (!defined('SMTP_DEBUG_DISPLAY')) {
     define('SMTP_DEBUG_DISPLAY', false);
 }
 
-$conn = mysqli_init();
+// Database Connection
+$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT);
 
-if ($is_production) {
-    mysqli_ssl_set(
-        $conn,
-        NULL,
-        NULL,
-        DB_SSL_CA,
-        NULL,
-        NULL
-    );
-    $connected = mysqli_real_connect(
-        $conn,
-        DB_HOST,
-        DB_USER,
-        DB_PASS,
-        DB_NAME,
-        DB_PORT,
-        NULL,
-        MYSQLI_CLIENT_SSL
-    );
-} else {
-    $connected = mysqli_real_connect(
-        $conn,
-        DB_HOST,
-        DB_USER,
-        DB_PASS,
-        DB_NAME,
-        DB_PORT
-    );
-}
-
-if (!$connected) {
-    die("Connection Error !! " . mysqli_connect_error());
+if (!$conn) {
+    die("Database Connection Error: " . mysqli_connect_error());
 }
 
 mysqli_set_charset($conn, "utf8mb4");
